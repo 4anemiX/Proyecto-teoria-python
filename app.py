@@ -25,17 +25,17 @@ from utils.data_loader import cargar_precios, calcular_rendimientos, obtener_tas
 # Módulos implementados
 from modules.inicio import render as render_inicio
 
-# Módulos en construcción (placeholders)
-from modules.placeholder import (
-    render_tecnico,
-    render_rendimientos,
-    render_garch,
-    render_capm,
-    render_var,
-    render_markowitz,
-    render_senales,
-    render_macro,
-)
+# ── Módulos implementados ──────────────────────────────────────────────────────
+from modules.inicio       import render as render_inicio
+from modules.tecnico      import render as render_tecnico
+from modules.rendimientos import render as render_rendimientos
+from modules.garch        import render as render_garch
+from modules.capm         import render as render_capm
+from modules.var          import render as render_var
+from modules.markowitz    import render as render_markowitz
+from modules.senales      import render as render_senales
+from modules.macro        import render as render_macro
+
 
 # ---- CSS personalizado ----
 st.markdown("""

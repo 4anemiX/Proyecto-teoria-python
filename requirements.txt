@@ -9,3 +9,5 @@ arch>=6.3.0
 python-dotenv>=1.0.0
 fredapi>=0.5.1
 requests>=2.31.0
+scikit-learn>=1.4.0
+cvxpy>=1.4.0
