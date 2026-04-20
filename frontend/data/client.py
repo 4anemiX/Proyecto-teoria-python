@@ -4,7 +4,7 @@ import streamlit as st
 from typing import Dict, List, Any, Optional
 
 # En local usa localhost, en Render usa la variable de entorno
-BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8002")
+BASE_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8002")
 
 def _get(endpoint: str) -> Any:
     try:
@@ -70,3 +70,11 @@ PORTFOLIO_META = {
 }
 TICKERS = ["ACN", "MSFT", "NVDA", "KO", "JPM"]
 BENCHMARK = "SPY"
+
+def fetch_consulta_ia(mensaje: str, historial: list, contexto_ticker: str = None) -> Optional[Dict]:
+    payload = {
+        "mensaje": mensaje,
+        "historial": historial,
+        "contexto_ticker": contexto_ticker,
+    }
+    return _post("/consulta-ia", payload)

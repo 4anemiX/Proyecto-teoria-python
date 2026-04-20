@@ -191,5 +191,48 @@ tbody tr td {
     font-weight: 500;
     color: #5A6480;
 }
+
+/* ── Chat IA ── */
+.chat-container {
+    background: #0D1018;
+    border: 1px solid #1E2436;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.chat-msg-user {
+    background: #111C30;
+    border-left: 3px solid #3B82F6;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0;
+    font-size: 0.85rem;
+    color: #C8D0E8;
+    line-height: 1.6;
+}
+.chat-msg-assistant {
+    background: #0A1020;
+    border-left: 3px solid #34D399;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0;
+    font-size: 0.85rem;
+    color: #8A94B0;
+    line-height: 1.6;
+}
+.chat-msg-assistant strong { color: #B8C0D8; }
+.pydantic-tag {
+    display: inline-block;
+    background: #0D2010;
+    color: #34D399;
+    border: 1px solid #1A4A28;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 10px;
+    margin-bottom: 12px;
+}
 </style>
 """

@@ -112,3 +112,26 @@ class FrontierData(BaseModel):
     max_sharpe_return: float
     max_sharpe_vol: float
     max_sharpe_ratio: float
+
+# ── Modelos para el Asistente IA ────────────────────────────────
+
+class MensajeChat(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(..., min_length=1, max_length=4000)
+
+class ConsultaIARequest(BaseModel):
+    mensaje: str = Field(..., min_length=3, max_length=1000, description="Pregunta del usuario")
+    historial: List[MensajeChat] = Field(default=[], max_length=20, description="Historial de la conversación")
+    contexto_ticker: Optional[str] = Field(None, description="Ticker activo en pantalla, si aplica")
+
+    @field_validator("mensaje")
+    @classmethod
+    def mensaje_no_vacio(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("El mensaje no puede estar vacío")
+        return v.strip()
+
+class ConsultaIAResponse(BaseModel):
+    respuesta: str
+    ticker_mencionado: Optional[str] = None
+    tokens_usados: Optional[int] = None

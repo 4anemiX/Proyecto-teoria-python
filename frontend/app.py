@@ -2,7 +2,6 @@ import streamlit as st
 from utils.styles import GLOBAL_CSS
 from utils.theme import COLORS, ticker_color
 import importlib
-
 st.set_page_config(
     page_title="DataRisk · Economía Digital",
     page_icon="◈",
@@ -10,14 +9,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
-
-# Ocultar navegación automática de Streamlit
 st.markdown("""
 <style>
 [data-testid="stSidebarNav"] { display: none; }
 </style>
 """, unsafe_allow_html=True)
-
 PAGES = {
     "Vista General":          "pages.overview",
     "Análisis Técnico":  "pages.m1_technical",
@@ -28,8 +24,8 @@ PAGES = {
     "Markowitz":         "pages.m6_markowitz",
     "Señales & Alertas": "pages.m7_signals",
     "Macro & Benchmark": "pages.m8_macro",
+    "Asistente IA":      "pages.m9_ia",
 }
-
 PORTFOLIO = {
     "ACN":  "Accenture",
     "MSFT": "Microsoft",
@@ -38,7 +34,6 @@ PORTFOLIO = {
     "JPM":  "JPMorgan",
     "SPY":  "Benchmark",
 }
-
 with st.sidebar:
     st.markdown("""
     <div style="padding: 8px 0 20px 0;">
@@ -52,13 +47,10 @@ with st.sidebar:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
     st.markdown('<div style="font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#2E3550; margin-bottom:8px;">Módulos</div>', unsafe_allow_html=True)
     selection = st.radio("nav", list(PAGES.keys()), label_visibility="collapsed")
-
     st.markdown('<hr style="border:none;border-top:1px solid #141824;margin:20px 0;">', unsafe_allow_html=True)
     st.markdown('<div style="font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#2E3550; margin-bottom:10px;">Portafolio</div>', unsafe_allow_html=True)
-
     for ticker, name in PORTFOLIO.items():
         color = ticker_color(ticker)
         st.markdown(f"""
@@ -70,9 +62,17 @@ with st.sidebar:
             <span style="font-size:0.72rem; color:#3B4460;">{name}</span>
         </div>
         """, unsafe_allow_html=True)
-
+    st.markdown('<hr style="border:none;border-top:1px solid #141824;margin:20px 0;">', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="font-size:0.68rem; font-weight:600; letter-spacing:0.1em;
+                text-transform:uppercase; color:#2E3550; margin-bottom:6px;">IA</div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <div style="width:6px; height:6px; border-radius:50%;
+                    background:#34D399; flex-shrink:0; opacity:0.85;"></div>
+        <span style="font-size:0.72rem; color:#3B4460;">Asistente · Claude Haiku</span>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<hr style="border:none;border-top:1px solid #141824;margin:20px 0;">', unsafe_allow_html=True)
     st.markdown('<div style="font-size:0.68rem; color:#2A3048; line-height:1.6;">Prof. Javier Mauricio Sierra<br>USTA · 2026</div>', unsafe_allow_html=True)
-
 module = importlib.import_module(PAGES[selection])
 module.render()
