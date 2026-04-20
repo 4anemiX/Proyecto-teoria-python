@@ -10,7 +10,8 @@
 
 | Nombre | Programa |
 |--------|----------|
-| [Tu nombre aquí] | Estadística · USTA |
+| Ximena Arias | Estadística · USTA |
+| Alejandra Gordillo | Estadística · USTA |
 
 ---
 
