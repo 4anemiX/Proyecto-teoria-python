@@ -1,18 +1,18 @@
 from pydantic_settings import BaseSettings
-from functools import lru_cache
 
 class Settings(BaseSettings):
-    fred_api_key: str = "demo"
-    var_confidence_level: float = 0.95
-    sma_short: int = 20
-    sma_long: int = 50
+    alpha_vantage_key: str = "demo"
+    fred_api_key: str = ""
+    default_years: int = 3
+    var_confidence: float = 0.95
+    mc_simulations: int = 10000
+    sma_period: int = 20
+    ema_period: int = 21
     rsi_period: int = 14
-    default_tickers: list[str] = ["ACN", "MSFT", "NVDA", "KO", "JPM", "SPY"]
-    benchmark: str = "SPY"
-    risk_free_rate: float = 0.045
+    cache_ttl_seconds: int = 1800
 
-    model_config = {"env_file": ".env"}
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
+settings = Settings()

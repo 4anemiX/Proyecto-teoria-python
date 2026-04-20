@@ -1,15 +1,11 @@
-# Entorno
 .env
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
-
-# Cache de datos
-data/cache/
-*.pkl
-*.parquet
-
-# OS
+*.egg-info/
+dist/
+build/
 .DS_Store
-Thumbs.db
+*.log

@@ -1,75 +1,22 @@
-# 📊 RiskLab USTA — Proyecto Integrador de Teoría del Riesgo
+# DataRisk· USTA
+### Tablero Interactivo de Análisis de Riesgo Financiero
+**Universidad Santo Tomás · Teoría del Riesgo · Prof. Javier Mauricio Sierra**
 
-Tablero interactivo de análisis financiero cuantitativo para el portafolio **Economía Digital y Servicios Globales**.
-
-**Materia:** Teoría del Riesgo · **Profesor:** Javier Mauricio Sierra · **Universidad:** USTA
-
----
-
-## 🗂️ Estructura del proyecto
-
-```
-risklab/
-│
-├── app.py                  # Punto de entrada principal (Streamlit)
-├── config.py               # Configuración central (tickers, parámetros)
-├── requirements.txt        # Dependencias Python
-├── .env.example            # Plantilla de variables de entorno
-├── .gitignore
-│
-├── utils/
-│   └── data_loader.py      # Descarga y caché de datos (yfinance + FRED)
-│
-├── modules/
-│   ├── inicio.py           # Módulo 0: Dashboard de inicio
-│   ├── tecnico.py          # Módulo 1: Análisis técnico
-│   ├── rendimientos.py     # Módulo 2: Rendimientos y estadísticos
-│   ├── garch.py            # Módulo 3: Modelos ARCH/GARCH
-│   ├── capm.py             # Módulo 4: CAPM y Beta
-│   ├── var.py              # Módulo 5: VaR y CVaR
-│   ├── markowitz.py        # Módulo 6: Optimización de portafolio
-│   ├── senales.py          # Módulo 7: Señales y alertas ⭐
-│   └── macro.py            # Módulo 8: Macro y benchmark ⭐
-│
-└── data/
-    └── cache/              # Caché local de datos (ignorado en Git)
-```
+> Proyecto integrador que implementa un tablero de análisis de riesgo financiero con arquitectura backend/frontend separada. El backend FastAPI sirve como motor de cálculo y el frontend Streamlit consume los endpoints para visualizar los resultados.
 
 ---
 
-## ⚙️ Instalación y ejecución
+## Autores
 
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/tu-usuario/risklab-usta.git
-cd risklab-usta
-```
-
-### 2. Crear entorno virtual e instalar dependencias
-```bash
-python -m venv venv
-source venv/bin/activate        # macOS/Linux
-venv\Scripts\activate           # Windows
-
-pip install -r requirements.txt
-```
-
-### 3. Configurar API Keys
-```bash
-cp .env.example .env
-# Edita .env y agrega tu FRED_API_KEY
-```
-
-Obtén tu key gratuita en: https://fred.stlouisfed.org/docs/api/api_key.html
-
-### 4. Ejecutar el tablero
-```bash
-streamlit run app.py
-```
+| Nombre | Programa |
+|--------|----------|
+| [Tu nombre aquí] | Estadística · USTA |
 
 ---
 
-## 📌 Portafolio analizado
+## Portafolio Analizado 📌
+
+**Narrativa: Economía Digital y Servicios Globales** — empresas que transforman la economía global mediante tecnología, datos y servicios financieros.
 
 | Ticker | Empresa | Sector |
 |--------|---------|--------|
@@ -80,28 +27,90 @@ streamlit run app.py
 | JPM | JPMorgan Chase | Finanzas Digitales |
 | SPY | S&P 500 ETF | Benchmark del mercado |
 
-**Narrativa:** *Economía Digital y Servicios Globales* — empresas que transforman industrias mediante tecnología, datos y servicios, combinadas con un activo defensivo (KO) para diversificación real.
+**Horizonte:** 3 años de datos diarios · **Tasa libre de riesgo:** ^IRX (T-Bill 3M)
 
 ---
 
-## 📡 APIs utilizadas
+## Stack Tecnológico
 
-| API | Uso | Key requerida |
-|-----|-----|---------------|
-| [yfinance](https://pypi.org/project/yfinance/) | Precios históricos de acciones | ❌ No |
-| [FRED](https://fred.stlouisfed.org/docs/api) | Tasa libre de riesgo, inflación, VIX | ✅ Gratis |
+| Componente | Tecnología | Versión |
+|-----------|-----------|---------|
+| Backend API | FastAPI | 0.136.0 |
+| Servidor ASGI | Uvicorn | 0.44.0 |
+| Validación | Pydantic + pydantic-settings | 2.13.1 |
+| Frontend | Streamlit | 1.43.2 |
+| Visualización | Plotly | 5.22.0 |
+| Datos de mercado | yfinance | 1.2.0 |
+| Modelos ARCH/GARCH | arch | 7.0.0 |
+| Optimización | PyPortfolioOpt | 1.5.6 |
+| Estadística | scipy + statsmodels | 1.13.1 / 0.14.2 |
+| Lenguaje | Python | 3.12.1 |
 
 ---
 
-## 🤖 Uso de IA
+## Instalación
 
-Este proyecto fue desarrollado con asistencia de Claude (Anthropic) como herramienta de apoyo en la estructuración del código y revisión de conceptos. Todo el código fue revisado, comprendido y ajustado por los integrantes del grupo. La IA fue utilizada como asistente, no como sustituto del aprendizaje.
+### 1. Clonar el repositorio
+```bash
+git clone <tu-repo>
+cd RiskLab-Digital
+```
+
+### 2. Crear entorno virtual
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Linux / Mac
+# .venv\Scripts\activate         # Windows
+```
+
+### 3. Instalar dependencias
+```bash
+pip install -r requirements.txt
+pip install -r backend/requirements.txt
+```
+
+### 4. Configurar variables de entorno
+```bash
+cp .env.example backend/.env
+```
 
 ---
 
-## 📚 Referencias
+## Ejecución
 
-- Moscote Flórez, O. *Elementos de estadística en riesgo financiero*. USTA, 2013.
-- Markowitz, H. (1952). Portfolio Selection. *The Journal of Finance*, 7(1), 77–91.
-- Tsay, R. S. (2010). *Analysis of Financial Time Series*. 3rd ed., Wiley.
-- Hull, J. C. (2018). *Risk Management and Financial Institutions*. 5th ed., Wiley.
+### Terminal 1 — Backend FastAPI
+```bash
+cd backend
+uvicorn app.main:app --reload --port 8002
+```
+
+### Terminal 2 — Frontend Streamlit
+```bash
+cd frontend
+streamlit run app.py
+```
+
+---
+
+## Endpoints del Backend
+
+| Endpoint | Método | Descripción |
+|---------|--------|-------------|
+| `/` | GET | Health check |
+| `/activos` | GET | Lista activos con precios actuales |
+| `/precios/{ticker}` | GET | Precios históricos OHLCV |
+| `/rendimientos/{ticker}` | GET | Rendimientos con estadísticas |
+| `/indicadores/{ticker}` | GET | SMA, EMA, Bollinger, RSI, MACD, Estocástico |
+| `/capm` | GET | Beta y rendimiento esperado CAPM |
+| `/macro` | GET | Indicadores macroeconómicos |
+| `/alertas` | GET | Señales de compra/venta |
+| `/var` | POST | VaR paramétrico, histórico, MC y CVaR |
+| `/frontera-eficiente` | POST | Frontera eficiente de Markowitz |
+
+---
+
+## Uso de IA
+
+Este proyecto utilizó **Claude (Anthropic)** como asistente de desarrollo.
+
+*DataRisk · Universidad Santo Tomás · Bogotá, Colombia · 2026*

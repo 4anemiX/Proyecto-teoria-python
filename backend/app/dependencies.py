@@ -1,12 +1,29 @@
-from fastapi import Depends
-from .config import Settings, get_settings
-from . import services
+from functools import lru_cache
+from .services import DataService, TechnicalIndicators, RiskCalculator, PortfolioAnalyzer, AlertasService, MacroService
+from .config import settings
 
-def get_data_service(settings: Settings = Depends(get_settings)):
-    """Dependencia: servicio de datos financieros"""
-    return services
+@lru_cache()
+def get_data_service() -> DataService:
+    return DataService()
 
-def get_rf_rate(settings: Settings = Depends(get_settings)) -> float:
-    """Dependencia: tasa libre de riesgo"""
-    macro = services.get_macro(settings.fred_api_key)
-    return macro["risk_free_rate"]
+@lru_cache()
+def get_tech_indicators() -> TechnicalIndicators:
+    return TechnicalIndicators(
+        sma=settings.sma_period,
+        ema=settings.ema_period,
+        rsi=settings.rsi_period,
+    )
+
+@lru_cache()
+def get_risk_calculator() -> RiskCalculator:
+    return RiskCalculator()
+
+def get_portfolio_analyzer() -> PortfolioAnalyzer:
+    return PortfolioAnalyzer(get_data_service())
+
+def get_alertas_service() -> AlertasService:
+    return AlertasService(get_tech_indicators())
+
+@lru_cache()
+def get_macro_service() -> MacroService:
+    return MacroService()

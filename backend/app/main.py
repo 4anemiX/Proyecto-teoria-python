@@ -1,15 +1,15 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Annotated
 
-from .config import get_settings, Settings
-from .models import PortfolioRequest, VaRResponse, CAPMResponse, IndicadoresResponse, MacroResponse
-from .dependencies import get_data_service, get_rf_rate
-from . import services
+from .models import VaRRequest, PortfolioRequest
+from .services import (DataService, TechnicalIndicators, RiskCalculator,
+                        PortfolioAnalyzer, AlertasService, MacroService, PORTFOLIO, TICKERS_ALL)
+from .dependencies import (get_data_service, get_tech_indicators, get_risk_calculator,
+                            get_portfolio_analyzer, get_alertas_service, get_macro_service)
 
 app = FastAPI(
-    title="RiskLab API",
-    description="Backend de análisis de riesgo financiero - Portafolio Economía Digital",
+    title="RiskLab API — Economía Digital y Servicios Globales",
+    description="Motor de cálculo de riesgo financiero · USTA · Teoría del Riesgo",
     version="1.0.0",
 )
 
@@ -20,102 +20,122 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def root():
-    return {"message": "RiskLab API v1.0 — Teoría del Riesgo USTA"}
+# ── Health check ────────────────────────────────────────────────
+@app.get("/", tags=["Health"])
+async def root():
+    return {"status": "ok", "message": "RiskLab API activa — Economía Digital y Servicios Globales"}
 
-@app.get("/activos")
-def get_activos(settings: Annotated[Settings, Depends(get_settings)]):
-    portfolio = [
-        {"ticker": "ACN",  "empresa": "Accenture",      "sector": "Consultoría Tecnológica"},
-        {"ticker": "MSFT", "empresa": "Microsoft",       "sector": "Cloud / IA"},
-        {"ticker": "NVDA", "empresa": "NVIDIA",          "sector": "Semiconductores / IA"},
-        {"ticker": "KO",   "empresa": "Coca-Cola",       "sector": "Consumo Defensivo"},
-        {"ticker": "JPM",  "empresa": "JPMorgan Chase",  "sector": "Finanzas Digitales"},
-        {"ticker": "SPY",  "empresa": "S&P 500 ETF",     "sector": "Benchmark"},
-    ]
-    return {"portafolio": portfolio, "benchmark": settings.benchmark}
-
-@app.get("/precios/{ticker}")
-def get_precios(ticker: str, period: str = "1y"):
+# ── Activos ─────────────────────────────────────────────────────
+@app.get("/activos", tags=["Datos"])
+async def get_activos(svc: DataService = Depends(get_data_service)):
     try:
-        df = services.get_prices([ticker.upper()], period=period)
-        col = ticker.upper()
-        if col not in df.columns:
-            col = df.columns[0]
-        prices = df[col].dropna()
+        return svc.get_asset_info()
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+# ── Precios OHLCV ────────────────────────────────────────────────
+@app.get("/precios/{ticker}", tags=["Datos"])
+async def get_precios(ticker: str, svc: DataService = Depends(get_data_service)):
+    ticker = ticker.upper()
+    if ticker not in TICKERS_ALL:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} no está en el portafolio")
+    try:
+        df = svc.get_prices(ticker)
+        fechas = [str(d)[:10] for d in df.index]
         return {
-            "ticker": ticker.upper(),
-            "fechas": [str(d.date()) for d in prices.index],
-            "precios": [round(float(p), 2) for p in prices.values],
+            "ticker": ticker,
+            "fechas": fechas,
+            "open":   [round(float(v), 4) for v in df["Open"]],
+            "high":   [round(float(v), 4) for v in df["High"]],
+            "low":    [round(float(v), 4) for v in df["Low"]],
+            "close":  [round(float(v), 4) for v in df["Close"]],
+            "volume": [int(v) for v in df["Volume"]],
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
-@app.get("/rendimientos/{ticker}")
-def get_rendimientos(ticker: str, period: str = "2y"):
+# ── Rendimientos ─────────────────────────────────────────────────
+@app.get("/rendimientos/{ticker}", tags=["Análisis"])
+async def get_rendimientos(ticker: str,
+                           svc: DataService = Depends(get_data_service),
+                           risk: RiskCalculator = Depends(get_risk_calculator)):
+    ticker = ticker.upper()
+    if ticker not in TICKERS_ALL:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} no encontrado")
     try:
-        df = services.get_returns([ticker.upper()], period=period)
-        col = ticker.upper()
-        if col not in df.columns:
-            col = df.columns[0]
-        rets = df[col].dropna()
-        return {
-            "ticker": ticker.upper(),
-            "fechas": [str(d.date()) for d in rets.index],
-            "rendimientos": [round(float(r), 6) for r in rets.values],
-            "media": round(float(rets.mean()), 6),
-            "std": round(float(rets.std()), 6),
-            "skewness": round(float(rets.skew()), 4),
-            "kurtosis": round(float(rets.kurtosis()), 4),
-        }
+        df = svc.get_prices(ticker)
+        stats = risk.returns_stats(df)
+        return {"ticker": ticker, **stats}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
-@app.get("/indicadores/{ticker}", response_model=IndicadoresResponse)
-def get_indicadores(ticker: str):
+# ── Indicadores técnicos ─────────────────────────────────────────
+@app.get("/indicadores/{ticker}", tags=["Análisis"])
+async def get_indicadores(ticker: str,
+                           svc: DataService = Depends(get_data_service),
+                           tech: TechnicalIndicators = Depends(get_tech_indicators)):
+    ticker = ticker.upper()
+    if ticker not in TICKERS_ALL:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} no encontrado")
     try:
-        return services.compute_indicators(ticker.upper())
+        df = svc.get_prices(ticker)
+        result = tech.compute(df)
+        return {"ticker": ticker, **result}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
-@app.post("/var", response_model=VaRResponse)
-def calc_var(req: PortfolioRequest, settings: Annotated[Settings, Depends(get_settings)]):
+# ── CAPM ──────────────────────────────────────────────────────────
+@app.get("/capm", tags=["Análisis"])
+async def get_capm(pa: PortfolioAnalyzer = Depends(get_portfolio_analyzer)):
     try:
-        return services.compute_var(req.tickers, req.weights, req.confidence_level)
+        return pa.capm()
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
-@app.get("/capm/{ticker}", response_model=CAPMResponse)
-def calc_capm(ticker: str, rf: Annotated[float, Depends(get_rf_rate)]):
+# ── Macro ─────────────────────────────────────────────────────────
+@app.get("/macro", tags=["Macro"])
+async def get_macro(ms: MacroService = Depends(get_macro_service)):
     try:
-        return services.compute_capm(ticker.upper(), rf)
+        return ms.get_macro()
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
-@app.post("/frontera-eficiente")
-def calc_frontera(req: PortfolioRequest):
+# ── Alertas ───────────────────────────────────────────────────────
+@app.get("/alertas", tags=["Señales"])
+async def get_alertas(svc: DataService = Depends(get_data_service),
+                      alerta_svc: AlertasService = Depends(get_alertas_service)):
     try:
-        return services.compute_efficient_frontier(req.tickers, n_portfolios=2000)
+        results = []
+        for ticker in PORTFOLIO:
+            df = svc.get_prices(ticker)
+            results.append(alerta_svc.generate(ticker, df))
+        return results
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
-@app.get("/garch/{ticker}")
-def calc_garch(ticker: str):
+# ── VaR ───────────────────────────────────────────────────────────
+@app.post("/var", tags=["Riesgo"])
+async def get_var(req: VaRRequest,
+                  svc: DataService = Depends(get_data_service),
+                  risk: RiskCalculator = Depends(get_risk_calculator)):
+    ticker = req.ticker.upper()
+    if ticker not in TICKERS_ALL:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} no encontrado")
     try:
-        return services.compute_garch(ticker.upper())
+        df = svc.get_prices(ticker)
+        result = risk.compute_var(df, req.confidence, req.simulations)
+        return {"ticker": ticker, **result}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
-@app.get("/alertas")
-def get_alertas():
+# ── Frontera eficiente ────────────────────────────────────────────
+@app.post("/frontera-eficiente", tags=["Portafolio"])
+async def get_frontera(req: PortfolioRequest,
+                        pa: PortfolioAnalyzer = Depends(get_portfolio_analyzer)):
+    for t in req.tickers:
+        if t.upper() not in TICKERS_ALL:
+            raise HTTPException(status_code=400, detail=f"Ticker {t} no válido")
     try:
-        tickers = ["ACN", "MSFT", "NVDA", "KO", "JPM"]
-        alertas = [services.compute_indicators(t) for t in tickers]
-        return {"alertas": alertas}
+        return pa.efficient_frontier([t.upper() for t in req.tickers], req.weights)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/macro", response_model=MacroResponse)
-def get_macro_data(settings: Annotated[Settings, Depends(get_settings)]):
-    return services.get_macro(settings.fred_api_key)
+        raise HTTPException(status_code=503, detail=str(e))
