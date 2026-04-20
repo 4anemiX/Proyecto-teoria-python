@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     ema_period: int = 21
     rsi_period: int = 14
     cache_ttl_seconds: int = 1800
-    groq_api_key: str = "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"        # ← nueva línea
+    groq_api_key: str = ""        
 
     class Config:
         env_file = ".env"
