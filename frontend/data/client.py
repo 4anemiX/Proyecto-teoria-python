@@ -2,7 +2,8 @@ import requests
 import streamlit as st
 from typing import Dict, List, Any, Optional
 
-BASE_URL = "http://localhost:8002"
+# En local usa localhost, en Render usa la variable de entorno
+BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8002")
 
 def _get(endpoint: str) -> Any:
     try:
