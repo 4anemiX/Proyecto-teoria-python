@@ -56,13 +56,28 @@ class DataService:
     def get_asset_info(self) -> List[Dict]:
         result = []
         for ticker, meta in PORTFOLIO.items():
-            try:
-                df = self.get_prices(ticker, years=1)
-                precio = float(df["Close"].iloc[-1])
-                prev = float(df["Close"].iloc[-2])
-                variacion = (precio - prev) / prev * 100
-            except Exception:
-                precio, variacion = 0.0, 0.0
+            precio, variacion = 0.0, 0.0
+            for intento in range(3):  # hasta 3 intentos
+                try:
+                    df = yf.download(
+                        ticker,
+                        period="5d",
+                        auto_adjust=True,
+                        progress=False,
+                        timeout=30,
+                    )
+                    if df.empty or len(df) < 2:
+                        continue
+                    df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+                    precio = float(df["Close"].iloc[-1])
+                    prev = float(df["Close"].iloc[-2])
+                    variacion = (precio - prev) / prev * 100
+                    if precio > 0:
+                        break  # éxito, salir del loop
+                except Exception as e:
+                    logger.warning(f"Intento {intento+1} fallido para {ticker}: {e}")
+                    time.sleep(2)
+
             result.append({
                 "ticker": ticker,
                 "empresa": meta["empresa"],
