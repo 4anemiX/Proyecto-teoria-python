@@ -44,9 +44,12 @@ def _clean(lst):
 # ── DataService ─────────────────────────────────────────────────
 class DataService:
     @timer_log
-    def get_prices(self, ticker: str, years: int = None) -> pd.DataFrame:
-        y = years or settings.default_years
-        df = yf.download(ticker, period=f"{y}y", auto_adjust=True, progress=False)
+    def get_prices(self, ticker: str, years: int = None, start: str = None, end: str = None) -> pd.DataFrame:
+        if start and end:
+            df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False)
+        else:
+            y = years or settings.default_years
+            df = yf.download(ticker, period=f"{y}y", auto_adjust=True, progress=False)
         if df.empty:
             raise ValueError(f"No se encontraron datos para {ticker}")
         df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]

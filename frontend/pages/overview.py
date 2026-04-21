@@ -1,12 +1,12 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+from datetime import date, timedelta
 from data.client import fetch_activos, fetch_precios, PORTFOLIO_META, TICKERS, BENCHMARK
 from utils.theme import ticker_color, COLORS
 
 
 def _interpret_correlation(corr_matrix: pd.DataFrame) -> str:
-    """Genera interpretación automática de la matriz de correlaciones."""
     pairs = []
     tickers = corr_matrix.columns.tolist()
     for i in range(len(tickers)):
@@ -16,7 +16,6 @@ def _interpret_correlation(corr_matrix: pd.DataFrame) -> str:
     highest = pairs[0]
     lowest = pairs[-1]
     highly_correlated = [(a, b, c) for a, b, c in pairs if c > 0.7]
-
     msg = f"<strong>Par más correlacionado:</strong> {highest[0]}–{highest[1]} ({highest[2]:.2f}), "
     if len(highly_correlated) > 1:
         msg += f"junto con {len(highly_correlated) - 1} par(es) adicional(es) con correlación >0.70, lo que reduce la diversificación efectiva. "
@@ -32,12 +31,40 @@ def render():
     <div class="section-subtitle">Economía Digital y Servicios Globales — empresas que transforman la economía global mediante tecnología, datos y servicios financieros.</div>
     """, unsafe_allow_html=True)
 
-    activos = fetch_activos()
-    if not activos:
-        st.warning("No se pudo conectar con el backend. Verifica que esté corriendo en el puerto 8002.")
-        return
+    # ── Selector de fechas ──
+    st.markdown('<div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#3B4460;margin-bottom:8px;">Período de análisis</div>', unsafe_allow_html=True)
+    col_f1, col_f2, col_f3 = st.columns([2, 2, 3])
+    with col_f1:
+        fecha_inicio = st.date_input(
+            "Fecha inicio",
+            value=date.today() - timedelta(days=365 * 3),
+            min_value=date(2000, 1, 1),
+            max_value=date.today() - timedelta(days=30),
+            format="YYYY-MM-DD",
+        )
+    with col_f2:
+        fecha_fin = st.date_input(
+            "Fecha fin",
+            value=date.today(),
+            min_value=date(2000, 1, 2),
+            max_value=date.today(),
+            format="YYYY-MM-DD",
+        )
+    with col_f3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if fecha_inicio >= fecha_fin:
+            st.markdown('<div class="interpretation-box negative">La fecha de inicio debe ser anterior a la fecha fin.</div>', unsafe_allow_html=True)
+            return
+
+    start_str = str(fecha_inicio)
+    end_str = str(fecha_fin)
 
     # ── Tarjetas de precios ──
+    activos = fetch_activos()
+    if not activos:
+        st.warning("No se pudo conectar con el backend.")
+        return
+
     cols = st.columns(len(activos))
     bullish = sum(1 for a in activos if a["variacion_diaria"] >= 0)
     bearish = len(activos) - bullish
@@ -57,7 +84,6 @@ def render():
             </div>
             """, unsafe_allow_html=True)
 
-    # Interpretación del mercado
     sentiment = "predominantemente alcista" if bullish > bearish else ("mixto" if bullish == bearish else "predominantemente bajista")
     sentiment_class = "positive" if bullish > bearish else ("warning" if bullish == bearish else "negative")
     st.markdown(f"""
@@ -73,13 +99,13 @@ def render():
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     # ── Rendimiento normalizado ──
-    st.markdown('<div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#3B4460;margin-bottom:12px;">Rendimiento Normalizado — Base 100</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#3B4460;margin-bottom:12px;">Rendimiento Normalizado — Base 100 · {start_str} a {end_str}</div>', unsafe_allow_html=True)
 
     fig = go.Figure()
     all_data = {}
     for ticker in TICKERS + [BENCHMARK]:
-        data = fetch_precios(ticker)
-        if data:
+        data = fetch_precios(ticker, start=start_str, end=end_str)
+        if data and len(data["close"]) > 1:
             closes = pd.Series(data["close"], index=data["fechas"])
             normalized = closes / closes.iloc[0] * 100
             all_data[ticker] = normalized
@@ -90,17 +116,15 @@ def render():
                 hovertemplate=f"<b>{ticker}</b><br>%{{x}}<br>Base 100: %{{y:.2f}}<extra></extra>"
             ))
 
-    fig.update_layout(height=380, title="Rendimiento relativo desde inicio del período")
+    fig.update_layout(height=380, title=f"Rendimiento relativo — {start_str} a {end_str}")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Interpretación rendimiento
     if all_data:
         final_values = {t: v.iloc[-1] for t, v in all_data.items() if t != BENCHMARK}
         best_ticker = max(final_values, key=final_values.get)
         worst_ticker = min(final_values, key=final_values.get)
         spy_val = all_data.get(BENCHMARK, pd.Series([100])).iloc[-1]
         beating_spy = [t for t, v in final_values.items() if v > spy_val]
-
         st.markdown(f"""
         <div class="interpretation-box">
             <strong>Mejor desempeño:</strong> {best_ticker} con {final_values[best_ticker]:.1f} (base 100) —
@@ -114,12 +138,12 @@ def render():
 
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-    # ── Matriz de correlaciones ──
+    # ── Matriz de correlaciones en morado ──
     st.markdown('<div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#3B4460;margin-bottom:12px;">Matriz de Correlaciones</div>', unsafe_allow_html=True)
 
     prices = {}
     for ticker in TICKERS:
-        data = fetch_precios(ticker)
+        data = fetch_precios(ticker, start=start_str, end=end_str)
         if data:
             prices[ticker] = data["close"]
 
@@ -127,13 +151,20 @@ def render():
         df_prices = pd.DataFrame(prices)
         corr = df_prices.pct_change().corr()
 
+        purple_scale = [
+            [0.0,  "#1a0a2e"],
+            [0.25, "#2d1b4e"],
+            [0.5,  "#0D1018"],
+            [0.75, "#4a2080"],
+            [1.0,  "#8b5cf6"],
+        ]
+
         fig2 = go.Figure(go.Heatmap(
             z=corr.values,
             x=corr.columns.tolist(),
             y=corr.index.tolist(),
-            colorscale=[[0, "#1a0a0a"], [0.5, "#0D1018"], [1, "#0a1a2e"]],
-            zmid=0,
-            zmin=-1, zmax=1,
+            colorscale=purple_scale,
+            zmid=0, zmin=-1, zmax=1,
             text=corr.round(2).values,
             texttemplate="<b>%{text}</b>",
             textfont=dict(size=13, family="DM Mono, monospace"),

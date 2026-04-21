@@ -38,7 +38,7 @@ def fetch_activos() -> Optional[List[Dict]]:
         return None
 
 @st.cache_data(ttl=1800)
-def fetch_precios(ticker: str) -> Optional[Dict]:
+def fetch_precios(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
     try:
         df = _data_svc.get_prices(ticker)
         return {
@@ -55,7 +55,7 @@ def fetch_precios(ticker: str) -> Optional[Dict]:
         return None
 
 @st.cache_data(ttl=1800)
-def fetch_rendimientos(ticker: str) -> Optional[Dict]:
+def fetch_rendimientos(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
     try:
         df = _data_svc.get_prices(ticker)
         return _risk.returns_stats(df)
@@ -64,7 +64,7 @@ def fetch_rendimientos(ticker: str) -> Optional[Dict]:
         return None
 
 @st.cache_data(ttl=1800)
-def fetch_indicadores(ticker: str) -> Optional[Dict]:
+def fetch_indicadores(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
     try:
         df = _data_svc.get_prices(ticker)
         return _tech.compute(df)
