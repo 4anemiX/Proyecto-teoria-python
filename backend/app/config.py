@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+import streamlit as st
 
 class Settings(BaseSettings):
     alpha_vantage_key: str = "demo"
@@ -10,10 +11,18 @@ class Settings(BaseSettings):
     ema_period: int = 21
     rsi_period: int = 14
     cache_ttl_seconds: int = 1800
-    groq_api_key: str = ""        
+    groq_api_key: str = ""
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
+    def get_groq_key(self) -> str:
+        if self.groq_api_key:
+            return self.groq_api_key
+        try:
+            return st.secrets["GROQ_API_KEY"]
+        except Exception:
+            return ""
 
 settings = Settings()
