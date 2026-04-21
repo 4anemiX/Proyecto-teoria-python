@@ -39,18 +39,19 @@ PORTFOLIO = {
     "SPY":  "Benchmark",
 }
 
-# ── Inicializar fechas globales SOLO si no existen aún ───────────────────────
-# Usamos claves "_picker_*" para los widgets y "global_*" para el valor real
-# que leen las páginas. Así no hay conflicto entre el widget y el estado.
+# ── Inicializar fechas SOLO si no existen ─────────────────────────────────────
 if "global_start" not in st.session_state:
     st.session_state["global_start"] = date.today() - timedelta(days=365 * 3)
 if "global_end" not in st.session_state:
     st.session_state["global_end"] = date.today()
+if "_prev_start" not in st.session_state:
+    st.session_state["_prev_start"] = str(st.session_state["global_start"])
+if "_prev_end" not in st.session_state:
+    st.session_state["_prev_end"] = str(st.session_state["global_end"])
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
 
-    # Logo
     st.markdown("""
     <div style="padding: 8px 0 20px 0;">
         <div style="font-family:'Playfair Display',serif; font-size:1.25rem;
@@ -64,7 +65,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Módulos
     st.markdown(
         '<div style="font-size:0.68rem; font-weight:600; letter-spacing:0.1em; '
         'text-transform:uppercase; color:#2E3550; margin-bottom:8px;">Módulos</div>',
@@ -81,7 +81,6 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # Los widgets usan keys "_picker_*" — NO tocan "global_*" directamente
     picked_start = st.date_input(
         "Fecha inicio",
         value=st.session_state["global_start"],
@@ -99,12 +98,15 @@ with st.sidebar:
         key="_picker_end",
     )
 
-    # Sincronizar al estado global solo cuando cambian y son válidas
+    # Sincronizar y limpiar caché cuando cambian las fechas
     if picked_start < picked_end:
         if (picked_start != st.session_state["global_start"] or
                 picked_end != st.session_state["global_end"]):
             st.session_state["global_start"] = picked_start
             st.session_state["global_end"]   = picked_end
+            st.cache_data.clear()
+            st.session_state["_prev_start"]  = str(picked_start)
+            st.session_state["_prev_end"]    = str(picked_end)
             st.rerun()
 
     # Presets rápidos
@@ -116,17 +118,19 @@ with st.sidebar:
     if p1.button("1A", use_container_width=True, key="preset_1y"):
         st.session_state["global_start"] = date.today() - timedelta(days=365)
         st.session_state["global_end"]   = date.today()
+        st.cache_data.clear()
         st.rerun()
     if p2.button("3A", use_container_width=True, key="preset_3y"):
         st.session_state["global_start"] = date.today() - timedelta(days=365 * 3)
         st.session_state["global_end"]   = date.today()
+        st.cache_data.clear()
         st.rerun()
     if p3.button("5A", use_container_width=True, key="preset_5y"):
         st.session_state["global_start"] = date.today() - timedelta(days=365 * 5)
         st.session_state["global_end"]   = date.today()
+        st.cache_data.clear()
         st.rerun()
 
-    # Validación visible
     if picked_start >= picked_end:
         st.error("La fecha inicio debe ser anterior a la fecha fin.")
     else:
@@ -139,7 +143,6 @@ with st.sidebar:
 
     st.markdown('<hr style="border:none;border-top:1px solid #141824;margin:20px 0;">', unsafe_allow_html=True)
 
-    # Portafolio
     st.markdown(
         '<div style="font-size:0.68rem; font-weight:600; letter-spacing:0.1em; '
         'text-transform:uppercase; color:#2E3550; margin-bottom:10px;">Portafolio</div>',
@@ -159,7 +162,6 @@ with st.sidebar:
 
     st.markdown('<hr style="border:none;border-top:1px solid #141824;margin:20px 0;">', unsafe_allow_html=True)
 
-    # IA
     st.markdown("""
     <div style="font-size:0.68rem; font-weight:600; letter-spacing:0.1em;
                 text-transform:uppercase; color:#2E3550; margin-bottom:6px;">IA</div>

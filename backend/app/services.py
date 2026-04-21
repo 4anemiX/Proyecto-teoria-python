@@ -248,39 +248,39 @@ class PortfolioAnalyzer:
         self.data_svc = data_svc
 
     @timer_log
-    def capm(self) -> List[Dict]:
-        bench_df = self.data_svc.get_prices(BENCHMARK)
+    def capm(self, start: str = None, end: str = None) -> List[Dict]:
+        bench_df  = self.data_svc.get_prices(BENCHMARK, start=start, end=end)
         bench_ret = np.log(bench_df["Close"] / bench_df["Close"].shift(1)).dropna()
         rf_ticker = yf.download("^IRX", period="5d", progress=False, auto_adjust=True)
         rf_annual = float(rf_ticker["Close"].iloc[-1]) / 100 if not rf_ticker.empty else 0.05
-        rf_daily = rf_annual / 252
+        rf_daily  = rf_annual / 252
         market_ret = float(bench_ret.mean()) * 252
 
         results = []
         for ticker in PORTFOLIO:
             try:
-                df = self.data_svc.get_prices(ticker)
+                df  = self.data_svc.get_prices(ticker, start=start, end=end)
                 ret = np.log(df["Close"] / df["Close"].shift(1)).dropna()
                 common = ret.index.intersection(bench_ret.index)
                 r_a = ret.loc[common].values
                 r_m = bench_ret.loc[common].values
-                cov = np.cov(r_a, r_m)
+                cov  = np.cov(r_a, r_m)
                 beta = cov[0, 1] / cov[1, 1]
                 slope, intercept, r_val, _, _ = stats.linregress(r_m, r_a)
                 expected = rf_daily * 252 + beta * (market_ret - rf_annual)
                 results.append({
-                    "ticker": ticker,
-                    "beta": round(beta, 4),
-                    "alpha": round(float(intercept) * 252, 6),
-                    "r_squared": round(r_val ** 2, 4),
+                    "ticker":          ticker,
+                    "beta":            round(beta, 4),
+                    "alpha":           round(float(intercept) * 252, 6),
+                    "r_squared":       round(r_val ** 2, 4),
                     "expected_return": round(expected, 6),
-                    "risk_free_rate": round(rf_annual, 6),
-                    "market_return": round(market_ret, 6),
+                    "risk_free_rate":  round(rf_annual, 6),
+                    "market_return":   round(market_ret, 6),
                 })
             except Exception as e:
                 results.append({"ticker": ticker, "error": str(e)})
         return results
-
+    
     @timer_log
     def efficient_frontier(self, tickers: List[str], weights: List[float]) -> Dict:
         prices = pd.DataFrame()

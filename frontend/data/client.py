@@ -2,7 +2,6 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../backend'))
 
-import asyncio
 import httpx
 import streamlit as st
 from typing import Dict, List, Any, Optional
@@ -29,6 +28,14 @@ PORTFOLIO_META = {
     "SPY":  {"empresa": "S&P 500 ETF",    "sector": "Benchmark",               "color": "#64748B"},
 }
 
+
+def _get_dates() -> tuple[str | None, str | None]:
+    """Lee las fechas globales desde session_state y las devuelve como strings."""
+    start = st.session_state.get("global_start")
+    end   = st.session_state.get("global_end")
+    return (str(start) if start else None, str(end) if end else None)
+
+
 @st.cache_data(ttl=1800)
 def fetch_activos() -> Optional[List[Dict]]:
     try:
@@ -37,10 +44,14 @@ def fetch_activos() -> Optional[List[Dict]]:
         st.error(f"Error al obtener activos: {e}")
         return None
 
+
 @st.cache_data(ttl=1800)
 def fetch_precios(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
+    # Si no se pasan fechas explícitas, leer del session_state global
+    if not start or not end:
+        start, end = _get_dates()
     try:
-        df = _data_svc.get_prices(ticker)
+        df = _data_svc.get_prices(ticker, start=start, end=end)
         return {
             "ticker": ticker,
             "fechas": [str(d)[:10] for d in df.index],
@@ -54,31 +65,41 @@ def fetch_precios(ticker: str, start: str = None, end: str = None) -> Optional[D
         st.error(f"Error al obtener precios de {ticker}: {e}")
         return None
 
+
 @st.cache_data(ttl=1800)
 def fetch_rendimientos(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
+    if not start or not end:
+        start, end = _get_dates()
     try:
-        df = _data_svc.get_prices(ticker)
+        df = _data_svc.get_prices(ticker, start=start, end=end)
         return _risk.returns_stats(df)
     except Exception as e:
         st.error(f"Error al obtener rendimientos de {ticker}: {e}")
         return None
 
+
 @st.cache_data(ttl=1800)
 def fetch_indicadores(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
+    if not start or not end:
+        start, end = _get_dates()
     try:
-        df = _data_svc.get_prices(ticker)
+        df = _data_svc.get_prices(ticker, start=start, end=end)
         return _tech.compute(df)
     except Exception as e:
         st.error(f"Error al obtener indicadores de {ticker}: {e}")
         return None
 
+
 @st.cache_data(ttl=1800)
-def fetch_capm() -> Optional[List[Dict]]:
+def fetch_capm(start: str = None, end: str = None) -> Optional[List[Dict]]:
+    if not start or not end:
+        start, end = _get_dates()
     try:
-        return _portfolio.capm()
+        return _portfolio.capm(start=start, end=end)
     except Exception as e:
         st.error(f"Error al obtener CAPM: {e}")
         return None
+
 
 @st.cache_data(ttl=1800)
 def fetch_macro() -> Optional[Dict]:
@@ -88,52 +109,79 @@ def fetch_macro() -> Optional[Dict]:
         st.error(f"Error al obtener macro: {e}")
         return None
 
+
 @st.cache_data(ttl=1800)
-def fetch_alertas() -> Optional[List[Dict]]:
+def fetch_alertas(start: str = None, end: str = None) -> Optional[List[Dict]]:
+    if not start or not end:
+        start, end = _get_dates()
     try:
         results = []
         for ticker in TICKERS:
-            df = _data_svc.get_prices(ticker)
+            df = _data_svc.get_prices(ticker, start=start, end=end)
             results.append(_alertas.generate(ticker, df))
         return results
     except Exception as e:
         st.error(f"Error al obtener alertas: {e}")
         return None
 
+
 @st.cache_data(ttl=1800)
-def fetch_var(ticker: str, confidence: float = 0.95, simulations: int = 10000) -> Optional[Dict]:
+def fetch_var(ticker: str, confidence: float = 0.95, simulations: int = 10000,
+              start: str = None, end: str = None) -> Optional[Dict]:
+    if not start or not end:
+        start, end = _get_dates()
     try:
-        df = _data_svc.get_prices(ticker)
+        df = _data_svc.get_prices(ticker, start=start, end=end)
         return _risk.compute_var(df, confidence, simulations)
     except Exception as e:
         st.error(f"Error al calcular VaR de {ticker}: {e}")
         return None
 
+
 @st.cache_data(ttl=1800)
-def fetch_frontera(tickers: List[str], weights: List[float]) -> Optional[Dict]:
+def fetch_garch(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
+    if not start or not end:
+        start, end = _get_dates()
+    try:
+        df = _data_svc.get_prices(ticker, start=start, end=end)
+        return _risk.compute_garch(df)
+    except Exception as e:
+        st.error(f"Error al calcular GARCH de {ticker}: {e}")
+        return None
+
+
+@st.cache_data(ttl=1800)
+def fetch_frontera(tickers: List[str], weights: List[float],
+                   start: str = None, end: str = None) -> Optional[Dict]:
+    if not start or not end:
+        start, end = _get_dates()
     try:
         return _portfolio.efficient_frontier(tickers, weights)
     except Exception as e:
         st.error(f"Error al calcular frontera eficiente: {e}")
         return None
 
-def fetch_consulta_ia(mensaje: str, historial: list, contexto_ticker: str = None) -> Optional[Dict]:
+
+def fetch_consulta_ia(mensaje: str, historial: list,
+                      contexto_ticker: str = None) -> Optional[Dict]:
     """Llama a Groq directamente sin pasar por el backend HTTP."""
     api_key = settings.get_groq_key()
     if not api_key:
         st.error("GROQ_API_KEY no configurada en los secrets de Streamlit.")
         return None
 
-    system_prompt = """Eres el asistente de análisis de riesgo financiero del proyecto DataRisk, \
-desarrollado en la Universidad Santo Tomás (USTA Bogotá) para la materia Teoría del Riesgo \
-con el profesor Javier Mauricio Sierra. \
-El portafolio contiene: ACN, MSFT, NVDA, KO, JPM y SPY. \
-Responde siempre en español, de forma pedagógica y concisa. \
-Máximo 5 oraciones por respuesta. No uses listas ni markdown."""
+    system_prompt = (
+        "Eres el asistente de análisis de riesgo financiero del proyecto DataRisk, "
+        "desarrollado en la Universidad Santo Tomás (USTA Bogotá) para la materia Teoría del Riesgo "
+        "con el profesor Javier Mauricio Sierra. "
+        "El portafolio contiene: ACN, MSFT, NVDA, KO, JPM y SPY. "
+        "Responde siempre en español, de forma pedagógica y concisa. "
+        "Máximo 5 oraciones por respuesta. No uses listas ni markdown."
+    )
 
     messages = [{"role": "system", "content": system_prompt}]
     for m in historial:
-        role = m.get("role") if isinstance(m, dict) else m.role
+        role    = m.get("role")    if isinstance(m, dict) else m.role
         content = m.get("content") if isinstance(m, dict) else m.content
         messages.append({"role": role, "content": content})
     messages.append({"role": "user", "content": mensaje})
@@ -154,7 +202,7 @@ Máximo 5 oraciones por respuesta. No uses listas ni markdown."""
             timeout=30,
         )
         response.raise_for_status()
-        body = response.json()
+        body  = response.json()
         texto = body["choices"][0]["message"]["content"]
         tokens = body.get("usage", {}).get("completion_tokens")
 
@@ -164,9 +212,9 @@ Máximo 5 oraciones por respuesta. No uses listas ni markdown."""
         )
 
         return {
-            "respuesta": texto,
+            "respuesta":        texto,
             "ticker_mencionado": ticker_encontrado,
-            "tokens_usados": tokens,
+            "tokens_usados":    tokens,
         }
 
     except httpx.HTTPStatusError as e:
