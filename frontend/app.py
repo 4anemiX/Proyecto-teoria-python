@@ -39,7 +39,9 @@ PORTFOLIO = {
     "SPY":  "Benchmark",
 }
 
-# ── Inicializar fechas globales en session_state ──────────────────────────────
+# ── Inicializar fechas globales SOLO si no existen aún ───────────────────────
+# Usamos claves "_picker_*" para los widgets y "global_*" para el valor real
+# que leen las páginas. Así no hay conflicto entre el widget y el estado.
 if "global_start" not in st.session_state:
     st.session_state["global_start"] = date.today() - timedelta(days=365 * 3)
 if "global_end" not in st.session_state:
@@ -79,23 +81,31 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.date_input(
+    # Los widgets usan keys "_picker_*" — NO tocan "global_*" directamente
+    picked_start = st.date_input(
         "Fecha inicio",
         value=st.session_state["global_start"],
         min_value=date(2000, 1, 1),
-        max_value=st.session_state["global_end"] - timedelta(days=1),
-        key="global_start",
+        max_value=date.today() - timedelta(days=1),
         format="YYYY-MM-DD",
+        key="_picker_start",
     )
-
-    st.date_input(
+    picked_end = st.date_input(
         "Fecha fin",
         value=st.session_state["global_end"],
-        min_value=st.session_state["global_start"] + timedelta(days=1),
+        min_value=date(2000, 1, 2),
         max_value=date.today(),
-        key="global_end",
         format="YYYY-MM-DD",
+        key="_picker_end",
     )
+
+    # Sincronizar al estado global solo cuando cambian y son válidas
+    if picked_start < picked_end:
+        if (picked_start != st.session_state["global_start"] or
+                picked_end != st.session_state["global_end"]):
+            st.session_state["global_start"] = picked_start
+            st.session_state["global_end"]   = picked_end
+            st.rerun()
 
     # Presets rápidos
     st.markdown(
@@ -116,17 +126,16 @@ with st.sidebar:
         st.session_state["global_end"]   = date.today()
         st.rerun()
 
-    # Indicador de rango activo
-    delta_days = (st.session_state["global_end"] - st.session_state["global_start"]).days
-    st.markdown(
-        f'<div style="font-size:0.68rem; color:#3B4460; margin-top:6px; text-align:center;">'
-        f'{delta_days:,} días seleccionados</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Validación de rango
-    if st.session_state["global_start"] >= st.session_state["global_end"]:
+    # Validación visible
+    if picked_start >= picked_end:
         st.error("La fecha inicio debe ser anterior a la fecha fin.")
+    else:
+        delta_days = (st.session_state["global_end"] - st.session_state["global_start"]).days
+        st.markdown(
+            f'<div style="font-size:0.68rem; color:#3B4460; margin-top:6px; text-align:center;">'
+            f'{delta_days:,} días seleccionados</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown('<hr style="border:none;border-top:1px solid #141824;margin:20px 0;">', unsafe_allow_html=True)
 
