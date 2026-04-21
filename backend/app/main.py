@@ -10,8 +10,8 @@ from .dependencies import (get_data_service, get_tech_indicators, get_risk_calcu
                             get_portfolio_analyzer, get_alertas_service, get_macro_service)
 
 app = FastAPI(
-    title="RiskLab API — Economía Digital y Servicios Globales",
-    description="Motor de cálculo de riesgo financiero · USTA · Teoría del Riesgo",
+    title="DataRisk — Economía Digital y Servicios Globales",
+    description="Motor de cálculo de riesgo financiero · USTA · Teoría del Riesgo · Python para APIs e IA",
     version="1.0.0",
 )
 
