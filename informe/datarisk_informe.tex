@@ -1,0 +1,397 @@
+\documentclass[10pt,a4paper]{article}
+
+% ── Paquetes ────────────────────────────────────────────────────
+\usepackage[a4paper, top=1.8cm, bottom=1.8cm, left=2cm, right=2cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{multicol}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{mdframed}
+\usepackage{amsmath}
+\usepackage{fontawesome5}
+\usepackage{hyperref}
+\usepackage{parskip}
+\usepackage{multirow}
+\usepackage{colortbl}
+\usepackage{setspace}
+
+% ── Colores corporativos ─────────────────────────────────────────
+\definecolor{primary}{HTML}{2D2F92}
+\definecolor{dark}{HTML}{0E1117}
+\definecolor{darkbg}{HTML}{1A1D2E}
+\definecolor{accent}{HTML}{34D399}
+\definecolor{accentred}{HTML}{F87171}
+\definecolor{accentyellow}{HTML}{FBBF24}
+\definecolor{textgray}{HTML}{64748B}
+\definecolor{lightgray}{HTML}{F1F5F9}
+\definecolor{bordergray}{HTML}{CBD5E1}
+\definecolor{nvda}{HTML}{34D399}
+\definecolor{msft}{HTML}{A78BFA}
+\definecolor{acn}{HTML}{60A5FA}
+\definecolor{ko}{HTML}{F87171}
+\definecolor{jpm}{HTML}{FBBF24}
+
+% ── Tipografía ───────────────────────────────────────────────────
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+% ── Secciones ───────────────────────────────────────────────────
+\titleformat{\section}
+  {\large\bfseries\color{primary}}
+  {\thesection.}{0.5em}{}
+
+\titleformat{\subsection}
+  {\normalsize\bfseries\color{dark}}
+  {\thesubsection.}{0.5em}{}
+
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+\titlespacing*{\subsection}{0pt}{6pt}{2pt}
+
+% ── Cabecera / pie de página ─────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\small\color{textgray}\textbf{DataRisk} \textcolor{bordergray}{|} Informe}
+\fancyhead[R]{\small\color{textgray}USTA · Teoría del Riesgo · Python para APIs e IA · 2026}
+\fancyfoot[L]{\small\color{textgray}\textit{Ximena Arias - Alejandra Gordillo}}
+\fancyfoot[C]{\small\color{textgray}\thepage}
+
+% ── Entornos de cajas ─────────────────────────────────────────────
+\newmdenv[
+  backgroundcolor=lightgray,
+  linecolor=primary,
+  linewidth=2pt,
+  topline=false, rightline=false, bottomline=false,
+  leftmargin=0pt, rightmargin=0pt,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  skipabove=6pt, skipbelow=6pt
+]{insightbox}
+
+\newmdenv[
+  backgroundcolor=darkbg!8,
+  linecolor=accent,
+  linewidth=2pt,
+  topline=false, rightline=false, bottomline=false,
+  leftmargin=0pt, rightmargin=0pt,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  skipabove=6pt, skipbelow=6pt
+]{highlightbox}
+
+% ── Comandos utilitarios ──────────────────────────────────────────
+\newcommand{\ticker}[2]{\textcolor{#1}{\textbf{#2}}}
+\newcommand{\kpi}[2]{\begin{center}\textcolor{primary}{\Large\bfseries#1}\\[1pt]{\footnotesize\color{textgray}#2}\end{center}}
+\newcommand{\badge}[2]{\colorbox{#1!20}{\textcolor{#1}{\footnotesize\textbf{#2}}}}
+
+\setlist[itemize]{leftmargin=1.2em, itemsep=1pt, topsep=2pt, parsep=0pt}
+\setlist[enumerate]{leftmargin=1.2em, itemsep=1pt, topsep=2pt, parsep=0pt}
+
+% ════════════════════════════════════════════════════════════════
+\begin{document}
+% ════════════════════════════════════════════════════════════════
+
+% ── PORTADA / CABECERA EJECUTIVA ──────────────────────────────────
+\thispagestyle{empty}
+\vspace*{-0.5cm}
+
+\noindent
+\begin{minipage}[c]{0.62\textwidth}
+  {\fontsize{22}{26}\selectfont\bfseries\color{dark}DataRisk}\\[2pt]
+  {\large\color{primary}Tablero Interactivo de Análisis de Riesgo Financiero}\\[6pt]
+  {\small\color{textgray}Universidad Santo Tomás · Bogotá
+   
+   Teoría del Riesgo \quad - \quad Python para APIs e IA}\\
+  {\small\color{textgray}Prof. Javier Mauricio Sierra}
+  {\small\color{dark}\quad
+  
+  \textcolor{primary}{\textbf{Ximena Arias}} \textcolor{bordergray}{·}
+  \textcolor{primary}{\textbf{Alejandra Gordillo}}
+  \quad\textcolor{textgray}{\small — \quad  Facultad de Estadística}}
+\end{minipage}%
+\hfill
+\begin{minipage}[c]{0.35\textwidth}
+  \raggedleft
+    {\footnotesize\color{textgray}Período analizado}\\[2pt]
+    {\small\bfseries\color{dark}2023-04-22 ~ 2026-04-21}\\[4pt]
+    {\footnotesize\color{textgray}Plataforma en producción}\\[1pt]
+    {\scriptsize\color{primary}\href{https://proyecto-teoria-python-aleja-xime.streamlit.app/}{Ver plataforma}}
+\end{minipage}
+
+\vspace{4pt}
+\color{bordergray}\rule{\linewidth}{0.6pt}\color{black}
+\vspace{2pt}
+
+% ── PORTAFOLIO + KPIs ─────────────────────────────────────────────
+\begin{minipage}[t]{0.5\textwidth}
+\subsection*{\color{primary}Portafolio analizado — Economía Digital \& Servicios Globales}
+{\footnotesize
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Ticker} & \textbf{Empresa} & \textbf{Sector} & \textbf{Precio} \\
+\midrule
+\ticker{acn}{ACN}  & Accenture      & Consultoría Tecnológica       & \$197.40 \\
+\ticker{msft}{MSFT} & Microsoft     & Cloud / Inteligencia Artificial & \$423.57 \\
+\ticker{nvda}{NVDA} & NVIDIA        & Semiconductores / IA           & \$201.30 \\
+\ticker{ko}{KO}     & Coca-Cola     & Consumo Defensivo              & \$75.02  \\
+\ticker{jpm}{JPM}   & JPMorgan Chase & Finanzas Digitales            & \$317.76 \\
+\midrule
+\textit{SPY}        & S\&P 500 ETF  & Benchmark                      & ---      \\
+\bottomrule
+\end{tabular}
+}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.46\textwidth}
+\subsection*{\color{primary}Métricas clave del período}
+{\footnotesize
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Activo} & \textbf{Retorno acum.} & \textbf{Perfil} \\
+\midrule
+\ticker{nvda}{NVDA} & \textcolor{accent}{+647.9\%} & Agresivo ($\beta$=2.06) \\
+\ticker{jpm}{JPM}   & \textcolor{accent}{+141\%}   & Moderado ($\beta$=0.92) \\
+\ticker{msft}{MSFT} & \textcolor{accent}{+120\%}   & Moderado ($\beta$=1.00) \\
+\ticker{ko}{KO}     & +28\%                        & Defensivo ($\beta$=0.09) \\
+\ticker{acn}{ACN}   & \textcolor{accentred}{--27\%}& Defensivo ($\beta$=0.78) \\
+\midrule
+\textit{SPY}        & +78.5\%                      & Benchmark \\
+\bottomrule
+\end{tabular}
+}
+\end{minipage}
+
+\vspace{6pt}
+
+% ═══════════════════════════════════════════════════════
+\section{Hallazgos Principales del Análisis de Riesgo}
+% ═══════════════════════════════════════════════════════
+
+\begin{multicols}{2}
+
+\subsection{Rendimientos y distribución}
+
+Los rendimientos logarítmicos diarios de los cinco activos \textbf{rechazan la distribución normal} (Jarque-Bera $p<0.0001$, Shapiro $p<0.0001$ en todos los casos). ACN presenta asimetría negativa de $-0.5255$ y curtosis excesiva de $5.097$, indicando distribución \emph{leptocúrtica}: mayor probabilidad de eventos extremos de lo que predice un modelo gaussiano. Esta característica es común al portafolio completo y justifica el uso de CVaR como medida complementaria al VaR.
+
+\begin{insightbox}
+\footnotesize\textbf{Correlación más alta:} MSFT--NVDA ($\rho=0.51$). \\
+\textbf{Más baja:} MSFT--KO ($\rho=-0.06$), lo que \\
+favorece la cobertura de riesgo entre estos activos.
+\end{insightbox}
+
+\subsection{Value at Risk y CVaR}
+
+Para ACN con nivel de confianza del 95\%:
+
+{\footnotesize
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Método} & \textbf{VaR diario} \\
+\midrule
+Paramétrico (normal)    & $-2.908\%$ \\
+Histórico (no param.)   & $-2.743\%$ \\
+Montecarlo (10,000 sim.)& $-2.932\%$ \\
+\textbf{CVaR (ES)}      & $\mathbf{-4.394\%}$ \\
+\bottomrule
+\end{tabular}
+}
+
+\vspace{4pt}
+El test de Kupiec rechaza el modelo VaR paramétrico ($p=0.0481<0.05$), señalando que el número de excepciones observadas supera lo esperado bajo normalidad. \textbf{Recomendación: usar VaR histórico o CVaR como medida principal de riesgo de cola.}
+
+\subsection{Volatilidad condicional — GARCH}
+
+El modelo \textbf{GJR-GARCH} resultó ganador por AIC (2,790.4 vs.\ 2,954.9 del ARCH y 2,920.5 del GARCH(1,1)), capturando el \emph{efecto leverage}: las caídas de precio generan mayor volatilidad que las subidas equivalentes. El pronóstico a 5 días proyecta una volatilidad promedio del \textbf{1.9550\%} para ACN, con tendencia decreciente respecto a la volatilidad actual de 1.9936\%.
+
+\columnbreak
+
+\subsection{CAPM y riesgo sistemático}
+
+La Security Market Line confirma perfiles de riesgo diferenciados:
+
+\begin{itemize}
+  \item \ticker{nvda}{NVDA}: $\beta=2.062$ (\textbf{agresivo}). Amplifica movimientos del mercado. Alpha positivo de $+27.5\%$, retorno esperado del 36.37\%.
+  \item \ticker{msft}{MSFT}: $\beta=0.997$ (\textbf{moderado}). Correlación perfecta con el mercado. Alpha negativo $-5.4\%$.
+  \item \ticker{ko}{KO}: $\beta=0.095$ (\textbf{defensivo}). Prácticamente inmune al ciclo de mercado. Alpha $+6.7\%$.
+  \item \ticker{acn}{ACN}: $\beta=0.784$ (\textbf{defensivo}). Alpha negativo pronunciado $-25.6\%$ — el mayor destructor de valor del portafolio en el período.
+  \item \ticker{jpm}{JPM}: $\beta=0.918$ (\textbf{moderado}). Alpha $+11.7\%$.
+\end{itemize}
+
+\subsection{Frontera eficiente de Markowitz}
+
+La optimización media-varianza identifica dos portafolios óptimos:
+
+{\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+ & \textbf{Mín. Varianza} & \textbf{Máx. Sharpe} \\
+\midrule
+Rendimiento anual & 14.44\% & 40.94\% \\
+Volatilidad anual & 11.53\% & 17.22\% \\
+Sharpe Ratio      & ---     & \textbf{2.377} \\
+Principal activo  & KO (59.1\%)& KO (41.8\%) \\
+\bottomrule
+\end{tabular}
+}
+
+\vspace{4pt}
+Un Sharpe de 2.377 es excelente (umbral convencional $>1$). La concentración en KO refleja su baja volatilidad y correlación negativa con el resto del portafolio.
+
+\subsection{Señales técnicas y contexto macro}
+
+Las señales del período reciente (32 días al 21/04/2026) son \textbf{mixtas}: 1 compra, 1 venta, 3 neutral. El VIX en 19.1 indica mercado tranquilo con entorno favorable para riesgo. La tasa libre de riesgo es 3.60\%, T-Note 10Y en 4.28\% (curva normal, ciclo expansivo). USD/COP 3,570.
+
+\end{multicols}
+
+% ═══════════════════════════════════════════════════════
+\section{Decisiones Metodológicas}
+% ═══════════════════════════════════════════════════════
+
+\begin{multicols}{2}
+
+\subsection{Selección de activos}
+
+El portafolio fue diseñado para capturar la narrativa de \emph{Economía Digital y Servicios Globales}, con tres criterios: (1)~\textbf{diversificación sectorial} entre IA/cloud (NVDA, MSFT), consultoría (ACN), finanzas (JPM) y consumo defensivo (KO); (2)~\textbf{contrapeso de riesgo}, donde KO actúa como activo de baja correlación para reducir la varianza total; y (3)~\textbf{relevancia pedagógica}, cubriendo activos con comportamientos distintos de beta ($0.09$--$2.06$) y alpha.
+
+\subsection{Elección del modelo GARCH}
+
+Se estimaron cuatro especificaciones (ARCH(1), GARCH(1,1), GJR-GARCH, EGARCH) y se seleccionó la ganadora por \textbf{criterio de información de Akaike (AIC)}, que penaliza la verosimilitud por número de parámetros. El GJR-GARCH ganó en todos los activos, capturando el \emph{efecto leverage} característico de activos tecnológicos donde las caídas generan desproporcionadamente más volatilidad que las subidas de igual magnitud.
+
+\columnbreak
+
+\subsection{Método de VaR principal}
+
+Se implementaron tres métodos para contrastar supuestos. El VaR paramétrico asume normalidad y fue \textbf{rechazado por Kupiec} ($p<0.05$), confirmando que las colas son más pesadas de lo normal. El VaR histórico captura la distribución empírica real sin supuestos distribucionales. El CVaR (Expected Shortfall) se incluye como medida principal de riesgo extremo, ya que el VaR ignora la severidad de las pérdidas más allá del umbral.
+
+\subsection{Rendimientos logarítmicos}
+
+Se usan rendimientos logarítmicos ($r_t = \ln P_t/P_{t-1}$) en lugar de simples porque son \textbf{aditivos en el tiempo} (la suma de rendimientos diarios equivale al rendimiento del período) y \textbf{simétricamente acotados}, propiedades convenientes para los modelos GARCH y CAPM.
+
+\end{multicols}
+
+% ═══════════════════════════════════════════════════════
+\section{Arquitectura Técnica}
+% ═══════════════════════════════════════════════════════
+
+\begin{multicols}{2}
+
+\subsection{Diseño de capas}
+
+El sistema adopta una \textbf{arquitectura de dos capas} con una decisión clave para producción: en entorno local, el frontend Streamlit y el motor FastAPI corren como servicios separados comunicados por HTTP; en producción (Streamlit Cloud), el cliente importa directamente las clases del backend sin pasar por HTTP, eliminando latencia de red y dependencia de un servidor externo.
+
+{\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Capa} & \textbf{Tecnología} & \textbf{Rol} \\
+\midrule
+Frontend    & Streamlit 1.43     & Interfaz interactiva \\
+Visualización & Plotly 5.22      & Gráficos dinámicos \\
+Validación  & Pydantic v2        & Contratos de datos \\
+Cálculo     & scipy / numpy      & Estadística \\
+GARCH       & arch 7.0           & Volatilidad cond. \\
+Portafolio  & PyPortfolioOpt     & Markowitz \\
+Datos       & yfinance 1.2       & Precios OHLCV \\
+IA          & Groq / LLaMA 3.1   & Asistente chat \\
+\bottomrule
+\end{tabular}
+}
+
+\columnbreak
+
+\subsection{Endpoints principales de la API}
+
+{\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Endpoint} & \textbf{Descripción} \\
+\midrule
+\texttt{GET /activos}             & Precios y variación diaria \\
+\texttt{GET /precios/\{ticker\}}  & OHLCV con rango de fechas \\
+\texttt{GET /indicadores/\{ticker\}} & SMA, EMA, BB, RSI, MACD \\
+\texttt{GET /rendimientos/\{ticker\}} & Estadísticas y pruebas \\
+\texttt{GET /capm}                & Beta, alpha, SML \\
+\texttt{POST /var}                & VaR param./hist./MC + CVaR \\
+\texttt{POST /frontera-eficiente} & Markowitz + Sharpe \\
+\texttt{GET /alertas}             & Señales técnicas \\
+\texttt{GET /macro}               & VIX, tasas, divisas \\
+\texttt{POST /consulta-ia}        & Chat LLaMA 3.1 (Groq) \\
+\bottomrule
+\end{tabular}
+}
+
+\vspace{4pt}
+Todos los endpoints aceptan parámetros \texttt{start}/\texttt{end} (YYYY-MM-DD) para análisis de períodos específicos, con caché de 30 minutos en el frontend via \texttt{@st.cache\_data}.
+
+\end{multicols}
+
+\begin{highlightbox}
+\footnotesize\textbf{Pydantic v2 como columna vertebral de validación:}
+\texttt{VaRRequest} y \texttt{PortfolioRequest} validan rangos (\texttt{ge}, \texttt{le}), tipos y reglas de negocio antes de ejecutar cualquier cálculo. El validador \texttt{weights\_must\_sum\_one} rechaza portafolios con pesos $\neq 1.0$ (tolerancia $10^{-4}$). \texttt{MensajeChat} aplica regex \texttt{\^{}(user|assistant)\$} para prevenir inyecciones de roles inválidos al asistente IA.
+\end{highlightbox}
+
+% ═══════════════════════════════════════════════════════
+\section{Conclusiones y Recomendaciones de Inversión}
+% ═══════════════════════════════════════════════════════
+
+\begin{multicols}{2}
+
+\subsection{Hallazgos concluyentes}
+
+\begin{enumerate}
+  \item \textbf{NVDA domina el rendimiento} con +647.9\% en el período, pero con $\beta=2.06$ implica alta exposición al riesgo sistemático. Solo 2 de los 5 activos superaron al benchmark SPY (+78.5\%): NVDA y JPM.
+
+  \item \textbf{El portafolio no sigue distribución normal.} El test de Kupiec rechaza el VaR paramétrico. Los modelos basados en normalidad subestiman el riesgo de cola. El CVaR ($-4.39\%$ diario al 95\%) es la medida más conservadora y confiable.
+
+  \item \textbf{La correlación baja entre KO y el resto} (máximo $\rho=0.07$ con JPM) justifica su inclusión como activo estabilizador, incluso con retorno moderado del +28\%.
+
+  \item \textbf{GJR-GARCH captura el efecto leverage} presente en todos los activos del portafolio: las caídas generan picos de volatilidad desproporcionados respecto a las subidas equivalentes.
+
+  \item \textbf{ACN es el activo más débil del período}: $\alpha=-25.6\%$ anualizado y retorno acumulado negativo de $-27\%$ frente a un mercado alcista, con señal técnica predominantemente neutral.
+\end{enumerate}
+
+\columnbreak
+
+\subsection{Recomendaciones}
+
+\begin{insightbox}
+\footnotesize\textbf{Para un inversionista conservador (bajo riesgo):}
+Portafolio de mínima varianza: KO (59.1\%), MSFT (17.4\%), ACN (14.8\%), JPM (6.4\%), NVDA (2.4\%). Rendimiento esperado 14.44\% anual, volatilidad 11.53\%.
+\end{insightbox}
+
+\begin{insightbox}
+\footnotesize\textbf{Para un inversionista agresivo (máximo Sharpe):}
+Portafolio óptimo Markowitz: KO (41.8\%), JPM (30.2\%), NVDA (28\%). Sharpe ratio de 2.377 con rendimiento esperado del 40.94\% anual y volatilidad del 17.22\%.
+\end{insightbox}
+
+\vspace{4pt}
+\textbf{Acciones concretas sugeridas:}
+\begin{itemize}
+  \item Reducir exposición a ACN hasta revisar recuperación técnica. La señal combinada de 5 indicadores no muestra convicción de compra.
+  \item Usar \textbf{CVaR histórico} como límite de riesgo operacional en lugar de VaR paramétrico, dado el rechazo del test de Kupiec.
+  \item Monitorear NVDA con el modelo GJR-GARCH: su $\beta=2.06$ lo hace vulnerable ante una corrección del mercado (VIX actualmente en 19.1, zona de alerta si supera 25).
+  \item Mantener KO como ancla defensiva del portafolio, especialmente ante señales mixtas del mercado.
+  \item Revisar la posición en MSFT: pese a retorno positivo, el $\alpha=-5.4\%$ sugiere que no compensó suficientemente el riesgo sistemático asumido.
+\end{itemize}
+
+\end{multicols}
+
+\vspace{6pt}
+\color{bordergray}\rule{\linewidth}{0.4pt}\color{black}
+\vspace{2pt}
+
+{\footnotesize\color{textgray}
+\textbf{DataRisk} — Proyecto integrador · Teoría del Riesgo · Python para APIs e IA · Universidad Santo Tomás · Bogotá · 2026 \hfill
+
+\textbf{Plataforma:} \href{https://proyecto-teoria-python-aleja-xime.streamlit.app/}{Ver plataforma}
+}
+
+\end{document}
