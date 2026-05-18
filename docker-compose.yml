@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+
+  # ── Backend FastAPI ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: risklab_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DATABASE_URL=sqlite:////app/data/cache/risklab.db
+      - FRED_API_KEY=${FRED_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - ALPHA_VANTAGE_KEY=${ALPHA_VANTAGE_KEY}
+    volumes:
+      # Persistir SQLite fuera del contenedor
+      - sqlite_data:/app/data/cache
+      # Hot-reload en desarrollo: montar código fuente
+      - ./backend/app:/app/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # ── Frontend Streamlit ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: risklab_frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
+    driver: local

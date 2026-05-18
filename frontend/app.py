@@ -28,6 +28,11 @@ PAGES = {
     "Señales & Alertas": "pages.m7_signals",
     "Macro & Benchmark": "pages.m8_macro",
     "Asistente IA":      "pages.m9_ia",
+    "Renta Fija":        "pages.m_rf",
+    "Opciones B-S":      "pages.m_opt",
+    "Stress Testing":    "pages.m_stress",
+    "Predicción ML":     "pages.m_ml",
+    "Portafolios":       "pages.portafolios",
 }
 
 PORTFOLIO = {
