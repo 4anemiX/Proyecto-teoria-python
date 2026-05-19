@@ -10,3 +10,4 @@ build/
 *.log
 .env
 **/.env
+frontend/.streamlit/secrets.toml
