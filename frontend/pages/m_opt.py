@@ -57,13 +57,13 @@ def render():
     # ── Paridad put-call ───────────────────────────────────────────────────────
     parity = data.get("parity", {})
     if parity:
-        ok = parity.get("holds", False)
+        ok = parity.get("parity_holds", False)
         color = COLORS["positive"] if ok else COLORS["negative"]
         label = "✅ Paridad put-call verificada" if ok else "⚠️ Paridad put-call no verificada"
         st.markdown(
             f"<div class='insight-box' style='border-color:{color}'><strong>{label}</strong><br>"
-            f"LHS (C − P): {parity.get('lhs', 0):.4f} | RHS (S − Ke⁻ʳᵀ): {parity.get('rhs', 0):.4f} | "
-            f"Error: {parity.get('diff', 0):.6f}</div>",
+            f"LHS (C − P): {parity.get('lhs_C_minus_P', 0):.4f} | RHS (S − Ke⁻ʳᵀ): {parity.get('rhs_S_minus_Ke', 0):.4f} | "
+            f"Error: {parity.get('error', 0):.6f}",
             unsafe_allow_html=True,
         )
 
@@ -84,14 +84,15 @@ def render():
 
         with col1:
             payoff = curvas.get("payoff_curve", {})
+            spots  = payoff.get("spots", [])
             fig = go.Figure()
             fig.add_trace(go.Scatter(
-                x=payoff.get("S_range", []), y=payoff.get("payoff", []),
+                x=spots, y=payoff.get("payoffs", []),
                 mode="lines", name="Payoff al vencimiento",
                 line=dict(color=COLORS["accent"], width=2),
             ))
             fig.add_trace(go.Scatter(
-                x=payoff.get("S_range", []), y=payoff.get("price_curve", []),
+                x=spots, y=payoff.get("prices", []),
                 mode="lines", name="Precio Black-Scholes",
                 line=dict(color=COLORS["warning"], width=2, dash="dash"),
             ))
@@ -107,18 +108,29 @@ def render():
 
         with col2:
             delta_c = curvas.get("delta_curve", {})
+            spots_d = delta_c.get("spots", [])
+            # delta_curves es un dict {label: [valores]}; tomamos el primero (T actual)
+            delta_curves = delta_c.get("delta_curves", {})
+            first_label  = list(delta_curves.keys())[0] if delta_curves else None
+
             fig2 = go.Figure()
-            fig2.add_trace(go.Scatter(
-                x=delta_c.get("S_range", []), y=delta_c.get("delta", []),
-                mode="lines", name="Delta",
-                line=dict(color=COLORS["positive"], width=2),
-            ))
+            colors_list = [COLORS["positive"], COLORS["warning"], COLORS["accent"]]
+            for i, (label, vals) in enumerate(delta_curves.items()):
+                fig2.add_trace(go.Scatter(
+                    x=spots_d, y=vals,
+                    mode="lines", name=f"Delta {label}",
+                    line=dict(color=colors_list[i % len(colors_list)],
+                              width=2.5 if i == 0 else 1.2,
+                              dash="solid" if i == 0 else "dot"),
+                ))
             fig2.add_vline(x=K, line_dash="dot", line_color=COLORS["muted"])
-            fig2.add_hline(y=0, line_dash="dot", line_color=COLORS["muted"])
+            fig2.add_hline(y=0.5, line_dash="dot", line_color=COLORS["muted"], opacity=0.4)
+            fig2.add_hline(y=0,   line_dash="dot", line_color=COLORS["muted"])
             fig2.update_layout(
                 xaxis_title="Precio subyacente", yaxis_title="Delta",
                 margin=dict(t=20, b=40),
                 paper_bgcolor=COLORS["surface"], plot_bgcolor=COLORS["bg"],
                 font=dict(color=COLORS["text"]),
+                legend=dict(font=dict(size=10)),
             )
             st.plotly_chart(fig2, use_container_width=True)
