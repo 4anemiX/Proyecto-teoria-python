@@ -12,7 +12,7 @@ from .dependencies import (get_data_service, get_tech_indicators, get_risk_calcu
 from sqlalchemy.orm import Session
 import requests as req_lib
 from datetime import datetime, timedelta
- 
+
 from .database import get_db, init_db
 from .models.db_models import Asset, Price, Portfolio, PredictionLog, MacroCache, SignalLog
 from .models.new_schemas import (
@@ -56,13 +56,19 @@ async def get_activos(svc: DataService = Depends(get_data_service)):
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+# ✅ Ahora recibe start y end como query params opcionales
 @app.get("/precios/{ticker}", tags=["Datos"])
-async def get_precios(ticker: str, svc: DataService = Depends(get_data_service)):
+async def get_precios(
+    ticker: str,
+    start:  str | None = Query(None, description="Fecha inicio YYYY-MM-DD"),
+    end:    str | None = Query(None, description="Fecha fin YYYY-MM-DD"),
+    svc:    DataService = Depends(get_data_service),
+):
     ticker = ticker.upper()
     if ticker not in TICKERS_ALL:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} no está en el portafolio")
     try:
-        df = svc.get_prices(ticker)
+        df = svc.get_prices(ticker, start=start, end=end)
         fechas = [str(d)[:10] for d in df.index]
         return {
             "ticker": ticker,
@@ -76,38 +82,53 @@ async def get_precios(ticker: str, svc: DataService = Depends(get_data_service))
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+# ✅ Recibe y pasa start/end
 @app.get("/rendimientos/{ticker}", tags=["Análisis"])
-async def get_rendimientos(ticker: str,
-                           svc: DataService = Depends(get_data_service),
-                           risk: RiskCalculator = Depends(get_risk_calculator)):
+async def get_rendimientos(
+    ticker: str,
+    start:  str | None = Query(None),
+    end:    str | None = Query(None),
+    svc:    DataService = Depends(get_data_service),
+    risk:   RiskCalculator = Depends(get_risk_calculator),
+):
     ticker = ticker.upper()
     if ticker not in TICKERS_ALL:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} no encontrado")
     try:
-        df = svc.get_prices(ticker)
+        df = svc.get_prices(ticker, start=start, end=end)
         stats = risk.returns_stats(df)
         return {"ticker": ticker, **stats}
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+# ✅ Recibe y pasa start/end
 @app.get("/indicadores/{ticker}", tags=["Análisis"])
-async def get_indicadores(ticker: str,
-                           svc: DataService = Depends(get_data_service),
-                           tech: TechnicalIndicators = Depends(get_tech_indicators)):
+async def get_indicadores(
+    ticker: str,
+    start:  str | None = Query(None),
+    end:    str | None = Query(None),
+    svc:    DataService = Depends(get_data_service),
+    tech:   TechnicalIndicators = Depends(get_tech_indicators),
+):
     ticker = ticker.upper()
     if ticker not in TICKERS_ALL:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} no encontrado")
     try:
-        df = svc.get_prices(ticker)
+        df = svc.get_prices(ticker, start=start, end=end)
         result = tech.compute(df)
         return {"ticker": ticker, **result}
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+# ✅ Recibe y pasa start/end
 @app.get("/capm", tags=["Análisis"])
-async def get_capm(pa: PortfolioAnalyzer = Depends(get_portfolio_analyzer)):
+async def get_capm(
+    start: str | None = Query(None),
+    end:   str | None = Query(None),
+    pa:    PortfolioAnalyzer = Depends(get_portfolio_analyzer),
+):
     try:
-        return pa.capm()
+        return pa.capm(start=start, end=end)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
@@ -118,18 +139,22 @@ async def get_macro(ms: MacroService = Depends(get_macro_service)):
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+# ✅ Recibe y pasa start/end
 @app.get("/alertas", tags=["Señales"])
-async def get_alertas(svc: DataService = Depends(get_data_service),
-                      alerta_svc: AlertasService = Depends(get_alertas_service),
-                      db: Session = Depends(get_db)):
+async def get_alertas(
+    start:      str | None = Query(None),
+    end:        str | None = Query(None),
+    svc:        DataService = Depends(get_data_service),
+    alerta_svc: AlertasService = Depends(get_alertas_service),
+    db:         Session = Depends(get_db),
+):
     try:
         results = []
         for ticker in PORTFOLIO:
-            df = svc.get_prices(ticker)
+            df = svc.get_prices(ticker, start=start, end=end)
             alerta = alerta_svc.generate(ticker, df)
             results.append(alerta)
 
-            # Persistir en signals_log si hay señal activa
             señal = alerta.get("signal") or alerta.get("señal")
             if señal and señal not in ("Neutral", ""):
                 asset = db.query(Asset).filter(Asset.ticker == ticker).first()
@@ -145,23 +170,48 @@ async def get_alertas(svc: DataService = Depends(get_data_service),
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+# ✅ VaR: pasa start/end desde el body al DataService
 @app.post("/var", tags=["Riesgo"])
-async def get_var(req: VaRRequest,
-                  svc: DataService = Depends(get_data_service),
-                  risk: RiskCalculator = Depends(get_risk_calculator)):
+async def get_var(
+    req:  VaRRequest,
+    svc:  DataService = Depends(get_data_service),
+    risk: RiskCalculator = Depends(get_risk_calculator),
+):
     ticker = req.ticker.upper()
     if ticker not in TICKERS_ALL:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} no encontrado")
     try:
-        df = svc.get_prices(ticker)
+        start = getattr(req, "start", None)
+        end   = getattr(req, "end",   None)
+        df    = svc.get_prices(ticker, start=start, end=end)
         result = risk.compute_var(df, req.confidence, req.simulations)
         return {"ticker": ticker, **result}
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+# ✅ Recibe y pasa start/end
+@app.get("/garch/{ticker}", tags=["Análisis"])
+async def get_garch(
+    ticker: str,
+    start:  str | None = Query(None),
+    end:    str | None = Query(None),
+    svc:    DataService = Depends(get_data_service),
+    risk:   RiskCalculator = Depends(get_risk_calculator),
+):
+    ticker = ticker.upper()
+    if ticker not in TICKERS_ALL:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} no encontrado")
+    try:
+        df = svc.get_prices(ticker, start=start, end=end)
+        return risk.compute_garch(df)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
 @app.post("/frontera-eficiente", tags=["Portafolio"])
-async def get_frontera(req: PortfolioRequest,
-                        pa: PortfolioAnalyzer = Depends(get_portfolio_analyzer)):
+async def get_frontera(
+    req: PortfolioRequest,
+    pa:  PortfolioAnalyzer = Depends(get_portfolio_analyzer),
+):
     for t in req.tickers:
         if t.upper() not in TICKERS_ALL:
             raise HTTPException(status_code=400, detail=f"Ticker {t} no válido")
@@ -225,10 +275,9 @@ Máximo 5 oraciones por respuesta. No uses listas ni markdown."""
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-# ── Portafolios (CRUD básico con SQLAlchemy) ──────────────────────────────
+# ── Portafolios CRUD ──────────────────────────────────────────────────────────
 @app.post("/portafolios", tags=["Portafolios"])
 async def crear_portafolio(req: PortfolioCreate, db: Session = Depends(get_db)):
-    """Guarda un portafolio en SQLite."""
     portfolio = Portfolio(
         name=req.name,
         tickers=req.tickers,
@@ -239,35 +288,31 @@ async def crear_portafolio(req: PortfolioCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(portfolio)
     return {
-        "id": portfolio.id,
-        "name": portfolio.name,
-        "tickers": portfolio.tickers,
-        "weights": portfolio.weights,
+        "id":         portfolio.id,
+        "name":       portfolio.name,
+        "tickers":    portfolio.tickers,
+        "weights":    portfolio.weights,
         "created_at": str(portfolio.created_at),
-        "notes": portfolio.notes,
+        "notes":      portfolio.notes,
     }
- 
- 
+
 @app.get("/portafolios", tags=["Portafolios"])
 async def listar_portafolios(db: Session = Depends(get_db)):
-    """Lista todos los portafolios guardados."""
     portfolios = db.query(Portfolio).order_by(Portfolio.created_at.desc()).all()
     return [
         {
-            "id": p.id,
-            "name": p.name,
-            "tickers": p.tickers,
-            "weights": p.weights,
+            "id":         p.id,
+            "name":       p.name,
+            "tickers":    p.tickers,
+            "weights":    p.weights,
             "created_at": str(p.created_at),
-            "notes": p.notes,
+            "notes":      p.notes,
         }
         for p in portfolios
     ]
- 
- 
+
 @app.delete("/portafolios/{portfolio_id}", tags=["Portafolios"])
 async def eliminar_portafolio(portfolio_id: int, db: Session = Depends(get_db)):
-    """Elimina un portafolio por ID."""
     p = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not p:
         raise HTTPException(status_code=404, detail=f"Portafolio {portfolio_id} no encontrado.")
@@ -275,13 +320,9 @@ async def eliminar_portafolio(portfolio_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": f"Portafolio '{p.name}' eliminado."}
 
-# ── Curva de rendimiento (FRED + Nelson-Siegel) ───────────────────────────────
+# ── Curva de rendimiento ──────────────────────────────────────────────────────
 @app.get("/curva-rendimiento", tags=["Renta Fija"])
 async def get_curva_rendimiento(db: Session = Depends(get_db)):
-    """
-    Obtiene tasas de tesoros US desde FRED (con cache 24h en SQLite)
-    y ajusta la curva Nelson-Siegel.
-    """
     SERIES = {
         "DGS3MO": 0.25, "DGS6MO": 0.5,
         "DGS1": 1.0, "DGS2": 2.0, "DGS5": 5.0,
@@ -289,17 +330,14 @@ async def get_curva_rendimiento(db: Session = Depends(get_db)):
     }
     TTL_HOURS = 24
     maturities, yields_pct = [], []
- 
+
     for series_id, maturity in SERIES.items():
-        # Verificar caché
         cached = db.query(MacroCache).filter(MacroCache.series_id == series_id).first()
         if (cached and
                 datetime.utcnow() - cached.fetched_at < timedelta(hours=TTL_HOURS)):
             maturities.append(maturity)
             yields_pct.append(cached.value)
             continue
- 
-        # Descargar desde FRED
         try:
             url = (
                 f"https://api.stlouisfed.org/fred/series/observations"
@@ -312,8 +350,6 @@ async def get_curva_rendimiento(db: Session = Depends(get_db)):
             if val_str == ".":
                 continue
             val = float(val_str)
- 
-            # Actualizar caché
             if cached:
                 cached.value      = val
                 cached.fetched_at = datetime.utcnow()
@@ -322,24 +358,20 @@ async def get_curva_rendimiento(db: Session = Depends(get_db)):
             db.commit()
             maturities.append(maturity)
             yields_pct.append(val)
- 
-        except Exception as e:
-            # Usar caché vieja si existe
+        except Exception:
             if cached:
                 maturities.append(maturity)
                 yields_pct.append(cached.value)
- 
+
     if len(maturities) < 4:
-        raise HTTPException(
-            status_code=503,
-            detail="Datos insuficientes de FRED. Verifica FRED_API_KEY."
-        )
- 
-    yc = YieldCurve()
+        raise HTTPException(status_code=503,
+                            detail="Datos insuficientes de FRED. Verifica FRED_API_KEY.")
+
+    yc        = YieldCurve()
     ns_params = yc.fit_nelson_siegel(maturities, yields_pct)
-    curve_pts  = yc.curve_points(n=100)
-    shape      = yc.curve_shape()
- 
+    curve_pts = yc.curve_points(n=100)
+    shape     = yc.curve_shape()
+
     return {
         "maturities_obs": maturities,
         "yields_obs_pct": yields_pct,
@@ -347,16 +379,14 @@ async def get_curva_rendimiento(db: Session = Depends(get_db)):
         "curve_points":   curve_pts,
         "shape":          shape,
         "shape_interpretation": {
-            "normal":   "La curva tiene pendiente positiva: el mercado espera crecimiento.",
-            "invertida":"La curva está invertida: señal histórica de recesión.",
-            "plana":    "La curva plana refleja incertidumbre sobre el ciclo económico.",
+            "normal":    "La curva tiene pendiente positiva: el mercado espera crecimiento.",
+            "invertida": "La curva está invertida: señal histórica de recesión.",
+            "plana":     "La curva plana refleja incertidumbre sobre el ciclo económico.",
         }.get(shape, ""),
     }
- 
- 
+
 @app.post("/bono/duracion", tags=["Renta Fija"])
 async def get_bond_metrics(req: BondRequest):
-    """Calcula duración, convexidad y sensibilidad de precio de un bono sintético."""
     bond = Bond(
         face_value=req.face_value,
         coupon_rate=req.coupon_rate,
@@ -368,26 +398,17 @@ async def get_bond_metrics(req: BondRequest):
 # ── Opciones Black-Scholes ────────────────────────────────────────────────────
 @app.post("/opcion/precio", tags=["Opciones"])
 async def get_option_price(req: OptionRequest):
-    """
-    Valoración Black-Scholes de opción europea (call o put).
-    Calcula precio, las 5 Greeks, verifica paridad put-call
-    y opcionalmente la volatilidad implícita.
-    """
     pricer = OptionPricer(
         S=req.S, K=req.K, T=req.T,
         r=req.r, sigma=req.sigma, tipo=req.tipo,
     )
     result = pricer.full_result()
- 
     if req.market_price is not None:
         result["implied_vol"] = pricer.implied_volatility(req.market_price)
- 
     return result
- 
- 
+
 @app.post("/opcion/curvas", tags=["Opciones"])
 async def get_option_curves(req: OptionRequest):
-    """Curvas de payoff, precio y delta para visualización."""
     pricer = OptionPricer(
         S=req.S, K=req.K, T=req.T,
         r=req.r, sigma=req.sigma, tipo=req.tipo,
@@ -404,31 +425,26 @@ async def get_stress(
     svc: DataService = Depends(get_data_service),
     pa:  PortfolioAnalyzer = Depends(get_portfolio_analyzer),
 ):
-    """
-    Aplica escenarios de estrés al portafolio.
-    Si scenarios está vacío, ejecuta los 6 escenarios obligatorios.
-    """
     tickers = [t.upper() for t in req.tickers]
     for t in tickers:
         if t not in TICKERS_ALL:
             raise HTTPException(status_code=400, detail=f"Ticker {t} no válido.")
- 
-    # Obtener betas y precios actuales
+
     capm_data = pa.capm()
-    betas = {d["ticker"]: d["beta"] for d in capm_data if "error" not in d}
- 
+    betas     = {d["ticker"]: d["beta"] for d in capm_data if "error" not in d}
+
     current_prices, base_vols = {}, {}
     for t in tickers:
         try:
             df    = svc.get_prices(t, years=1)
             close = df["Close"].dropna()
             current_prices[t] = float(close.iloc[-1])
-            ret   = close.pct_change().dropna()
+            ret               = close.pct_change().dropna()
             base_vols[t]      = float(ret.std())
         except Exception:
             current_prices[t] = 100.0
             base_vols[t]      = 0.02
- 
+
     tester = StressTester(
         tickers=tickers,
         weights=req.weights,
@@ -437,10 +453,10 @@ async def get_stress(
         base_vol=base_vols,
         rf=0.05,
     )
- 
+
     if not req.scenarios:
         return tester.run_all_scenarios()
- 
+
     results = [tester.apply(s.model_dump()) for s in req.scenarios]
     return {"results": results}
 
@@ -451,24 +467,17 @@ async def predict_regime(
     svc: DataService = Depends(get_data_service),
     db:  Session     = Depends(get_db),
 ):
-    """
-    Predice el régimen de mercado (alcista/bajista/lateral) para un ticker.
-    Usa patrón Singleton para evitar recargar el modelo por request.
-    Persiste cada predicción en SQLite.
-    """
     predictor = get_predictor()
- 
     try:
         df    = svc.get_prices(req.ticker, years=1)
         close = df["Close"].dropna()
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Error al obtener precios: {e}")
- 
+
     result = predictor.predict(req.ticker, close)
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
- 
-    # Persistir en BD
+
     log = PredictionLog(
         model_version=predictor.version,
         ticker=req.ticker,
@@ -479,17 +488,14 @@ async def predict_regime(
     )
     db.add(log)
     db.commit()
- 
     return result
- 
- 
+
 @app.get("/predict/history", tags=["Machine Learning"])
 async def prediction_history(
     ticker: str | None = Query(None, description="Filtrar por ticker"),
     limit:  int        = Query(20, ge=1, le=100),
     db:     Session    = Depends(get_db),
 ):
-    """Historial de predicciones guardadas en SQLite."""
     q = db.query(PredictionLog).order_by(PredictionLog.timestamp.desc())
     if ticker:
         q = q.filter(PredictionLog.ticker == ticker.upper())

@@ -45,7 +45,9 @@ def render():
     """, unsafe_allow_html=True)
 
     ticker = st.selectbox("Activo", TICKERS + [BENCHMARK])
-    data = fetch_rendimientos(ticker)
+    start_str = str(st.session_state["global_start"])
+    end_str   = str(st.session_state["global_end"])
+    data = fetch_rendimientos(ticker, start=start_str, end=end_str)
     if not data:
         st.warning("No se pudieron cargar los rendimientos.")
         return
@@ -140,7 +142,7 @@ def render():
     fig3 = go.Figure()
     all_means = {}
     for t in TICKERS:
-        d = fetch_rendimientos(t)
+        d = fetch_rendimientos(t, start=start_str, end=end_str)
         if d:
             rets_t = [r for r in d["logaritmicos"] if r is not None]
             all_means[t] = np.mean(rets_t) * 100

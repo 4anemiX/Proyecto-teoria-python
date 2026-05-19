@@ -53,7 +53,10 @@ def render():
     simulations = col3.select_slider("Simulaciones Montecarlo", [1000, 5000, 10000, 50000], 10000)
 
     with st.spinner("Calculando VaR..."):
-        data = fetch_var(ticker, confidence, simulations)
+        start_str = str(st.session_state["global_start"])
+        end_str   = str(st.session_state["global_end"])
+        data = fetch_var(ticker, confidence, simulations, start=start_str, end=end_str)
+        
     if not data:
         st.warning("No se pudieron calcular los modelos VaR.")
         return
@@ -105,7 +108,7 @@ def render():
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     # ── Distribución con VaR ──
-    ret_data = fetch_rendimientos(ticker)
+    ret_data = fetch_rendimientos(ticker, start=start_str, end=end_str)
     if ret_data:
         rets = [r for r in ret_data["logaritmicos"] if r is not None]
         fig = go.Figure()

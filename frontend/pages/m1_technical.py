@@ -63,7 +63,9 @@ def render():
     with col_sel:
         ticker = st.selectbox("Activo", TICKERS + [BENCHMARK], label_visibility="visible")
 
-    data = fetch_indicadores(ticker)
+    start_str = str(st.session_state["global_start"])
+    end_str   = str(st.session_state["global_end"])
+    data = fetch_indicadores(ticker, start=start_str, end=end_str)
     if not data:
         st.warning("No se pudieron cargar los indicadores. Verifica el backend.")
         return

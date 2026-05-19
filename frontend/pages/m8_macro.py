@@ -69,10 +69,12 @@ def render():
     # ── Alpha, Tracking Error, Information Ratio ──
     st.markdown('<div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#3B4460;margin-bottom:12px;">Alpha de Jensen · Tracking Error · Information Ratio</div>', unsafe_allow_html=True)
 
-    capm_data = fetch_capm()
+    start_str = str(st.session_state["global_start"])
+    end_str   = str(st.session_state["global_end"])
+    capm_data = fetch_capm(start=start_str, end=end_str) 
     rows = []
     if capm_data:
-        bench_data = fetch_precios(BENCHMARK)
+        bench_data = fetch_precios(BENCHMARK,start=start_str, end=end_str)
         bench_ret = None
         if bench_data:
             bench_close = pd.Series(bench_data["close"]).dropna()
@@ -82,7 +84,7 @@ def render():
             if "error" in d:
                 continue
             t = d["ticker"]
-            price_data = fetch_precios(t)
+            price_data = fetch_precios(t,start=start_str, end=end_str)
             if price_data and bench_ret is not None:
                 close = pd.Series(price_data["close"]).dropna()
                 asset_ret = close.pct_change().dropna()
@@ -125,11 +127,11 @@ def render():
     st.markdown('<div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#3B4460;margin-bottom:12px;">Correlación con el S&P 500 (SPY)</div>', unsafe_allow_html=True)
 
     fig = go.Figure()
-    spy_data = fetch_precios(BENCHMARK)
+    spy_data = fetch_precios(BENCHMARK,start=start_str, end=end_str)
     if spy_data:
         close_spy = pd.Series(spy_data["close"]).pct_change().dropna()
         for t in TICKERS:
-            pd_data = fetch_precios(t)
+            pd_data = fetch_precios(t,start=start_str, end=end_str)
             if pd_data:
                 close_t = pd.Series(pd_data["close"]).pct_change().dropna()
                 n = min(len(close_t), len(close_spy))

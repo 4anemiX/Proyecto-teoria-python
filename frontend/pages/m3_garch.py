@@ -16,7 +16,9 @@ def render():
     ticker = st.selectbox("Activo", TICKERS)
 
     with st.spinner("Estimando modelos de volatilidad..."):
-        prices_data = fetch_precios(ticker)
+        start_str = str(st.session_state["global_start"])
+        end_str   = str(st.session_state["global_end"])
+        prices_data = fetch_precios(ticker, start=start_str, end=end_str)
         if not prices_data:
             st.warning("No se pudieron cargar los precios.")
             return

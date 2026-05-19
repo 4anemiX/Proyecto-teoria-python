@@ -31,7 +31,9 @@ def render():
     <div class="section-subtitle">Capital Asset Pricing Model — riesgo sistemático, retorno esperado y Security Market Line</div>
     """, unsafe_allow_html=True)
 
-    data = fetch_capm()
+    start_str = str(st.session_state["global_start"])
+    end_str   = str(st.session_state["global_end"])
+    data = fetch_capm(start=start_str, end=end_str)
     if not data:
         st.warning("No se pudieron cargar los datos CAPM.")
         return

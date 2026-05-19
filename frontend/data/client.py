@@ -4,8 +4,6 @@ import streamlit as st
 from typing import Dict, List, Any, Optional
 
 # ── URL del backend ────────────────────────────────────────────────────────────
-# Producción (Streamlit Cloud): lee BACKEND_URL desde secrets.toml
-# Local: usa http://localhost:8000
 try:
     BACKEND_URL = st.secrets.get("BACKEND_URL", "http://localhost:8000")
 except Exception:
@@ -22,11 +20,8 @@ PORTFOLIO_META = {
     "SPY":  {"empresa": "S&P 500 ETF",    "sector": "Benchmark",               "color": "#64748B"},
 }
 
-
-def _get_dates() -> tuple:
-    start = st.session_state.get("global_start")
-    end   = st.session_state.get("global_end")
-    return (str(start) if start else None, str(end) if end else None)
+# ELIMINADO: _get_dates() — las fechas deben pasarse siempre como argumentos explícitos
+# para que @st.cache_data las use correctamente como cache key.
 
 
 def _get(path: str, params: dict = None):
@@ -72,75 +67,76 @@ def _delete(path: str):
 
 @st.cache_data(ttl=1800)
 def fetch_activos() -> Optional[List[Dict]]:
+    """Precios actuales del día — no depende de fechas históricas."""
     return _get("/activos")
 
 
 @st.cache_data(ttl=1800)
-def fetch_precios(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
-    if not start or not end:
-        start, end = _get_dates()
-    params = {}
-    if start: params["start"] = start
-    if end:   params["end"]   = end
+def fetch_precios(ticker: str, start: str, end: str) -> Optional[Dict]:
+    """
+    start y end son OBLIGATORIOS para que @st.cache_data use las fechas
+    como parte de la cache key y no sirva datos de otro período.
+    """
+    params = {"start": start, "end": end}
     return _get(f"/precios/{ticker}", params=params)
 
 
 @st.cache_data(ttl=1800)
-def fetch_rendimientos(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
-    if not start or not end:
-        start, end = _get_dates()
-    params = {}
-    if start: params["start"] = start
-    if end:   params["end"]   = end
+def fetch_rendimientos(ticker: str, start: str, end: str) -> Optional[Dict]:
+    params = {"start": start, "end": end}
     return _get(f"/rendimientos/{ticker}", params=params)
 
 
 @st.cache_data(ttl=1800)
-def fetch_indicadores(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
-    if not start or not end:
-        start, end = _get_dates()
-    params = {}
-    if start: params["start"] = start
-    if end:   params["end"]   = end
+def fetch_indicadores(ticker: str, start: str, end: str) -> Optional[Dict]:
+    params = {"start": start, "end": end}
     return _get(f"/indicadores/{ticker}", params=params)
 
 
 @st.cache_data(ttl=1800)
-def fetch_capm(start: str = None, end: str = None) -> Optional[List[Dict]]:
-    return _get("/capm")
+def fetch_capm(start: str, end: str) -> Optional[List[Dict]]:
+    params = {"start": start, "end": end}
+    return _get("/capm", params=params)
 
 
 @st.cache_data(ttl=1800)
 def fetch_macro() -> Optional[Dict]:
+    """Datos macro no dependen del período seleccionado."""
     return _get("/macro")
 
 
 @st.cache_data(ttl=1800)
-def fetch_alertas(start: str = None, end: str = None) -> Optional[List[Dict]]:
-    return _get("/alertas")
+def fetch_alertas(start: str, end: str) -> Optional[List[Dict]]:
+    params = {"start": start, "end": end}
+    return _get("/alertas", params=params)
 
 
 @st.cache_data(ttl=1800)
-def fetch_garch(ticker: str, start: str = None, end: str = None) -> Optional[Dict]:
-    return _get(f"/garch/{ticker}")
+def fetch_garch(ticker: str, start: str, end: str) -> Optional[Dict]:
+    params = {"start": start, "end": end}
+    return _get(f"/garch/{ticker}", params=params)
 
 
 def fetch_var(ticker: str, confidence: float = 0.95, simulations: int = 10000,
               start: str = None, end: str = None) -> Optional[Dict]:
-    return _post("/var", {
+    body = {
         "ticker":      ticker,
         "confidence":  confidence,
         "simulations": simulations,
-    })
+    }
+    if start: body["start"] = start
+    if end:   body["end"]   = end
+    return _post("/var", body)
 
 
 @st.cache_data(ttl=1800)
-def fetch_frontera(tickers: List[str], weights: List[float],
+def fetch_frontera(tickers: tuple, weights: tuple,
                    start: str = None, end: str = None) -> Optional[Dict]:
-    return _post("/frontera-eficiente", {
-        "tickers": tickers,
-        "weights": weights,
-    })
+    # Nota: se usan tuple en vez de list para que sean hasheables por @st.cache_data
+    body = {"tickers": list(tickers), "weights": list(weights)}
+    if start: body["start"] = start
+    if end:   body["end"]   = end
+    return _post("/frontera-eficiente", body)
 
 
 # ── IA / Groq ──────────────────────────────────────────────────────────────────

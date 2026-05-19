@@ -523,7 +523,9 @@ def render():
     """, unsafe_allow_html=True)
 
     with st.spinner("Cargando señales técnicas..."):
-        alertas = fetch_alertas()
+        start_str = str(st.session_state["global_start"])
+        end_str   = str(st.session_state["global_end"])
+        alertas = fetch_alertas(start=start_str, end=end_str)
     if not alertas:
         st.warning("No se pudieron cargar las alertas.")
         return
@@ -606,7 +608,7 @@ def render():
 
             # Cargar indicadores reales
             with st.spinner(f"Cargando indicadores de {ticker_sel}..."):
-                ind = fetch_indicadores(ticker_sel)
+                ind = fetch_indicadores(ticker_sel, start=start_str, end=end_str)
 
             st.markdown('<div class="summary-label" style="margin-bottom:10px;">Indicadores técnicos</div>',
                         unsafe_allow_html=True)
@@ -652,7 +654,7 @@ def render():
                 </div>""", unsafe_allow_html=True)
 
                 with st.spinner(f"Cargando gráficas de {a['ticker']}..."):
-                    ind_exp = fetch_indicadores(a["ticker"])
+                    ind_exp = fetch_indicadores(a["ticker"], start=start_str, end=end_str)
                 _render_indicator_panel(a, ind_exp, t_color, key_prefix=f"tab3_{a['ticker']}_")
 
                 st.markdown("<br>", unsafe_allow_html=True)

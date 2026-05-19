@@ -49,10 +49,19 @@ if "global_start" not in st.session_state:
     st.session_state["global_start"] = date.today() - timedelta(days=365 * 3)
 if "global_end" not in st.session_state:
     st.session_state["global_end"] = date.today()
-if "_prev_start" not in st.session_state:
-    st.session_state["_prev_start"] = str(st.session_state["global_start"])
-if "_prev_end" not in st.session_state:
-    st.session_state["_prev_end"] = str(st.session_state["global_end"])
+
+
+def _apply_dates(new_start: date, new_end: date):
+    """
+    Centraliza el cambio de fechas: actualiza session_state, limpia el
+    caché y dispara el rerun. Llamar SIEMPRE que las fechas cambien para
+    garantizar consistencia.
+    """
+    st.session_state["global_start"] = new_start
+    st.session_state["global_end"]   = new_end
+    st.cache_data.clear()
+    st.rerun()
+
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -103,40 +112,33 @@ with st.sidebar:
         key="_picker_end",
     )
 
-    # Sincronizar y limpiar caché cuando cambian las fechas
-    if picked_start < picked_end:
-        if (picked_start != st.session_state["global_start"] or
-                picked_end != st.session_state["global_end"]):
-            st.session_state["global_start"] = picked_start
-            st.session_state["global_end"]   = picked_end
-            st.cache_data.clear()
-            st.session_state["_prev_start"]  = str(picked_start)
-            st.session_state["_prev_end"]    = str(picked_end)
-            st.rerun()
+    # ── Detectar cambio y aplicar ─────────────────────────────────────────────
+    # Se compara contra session_state (no contra _prev_*) para evitar
+    # doble rerun y que el picker quede desincronizado visualmente.
+    dates_changed = (
+        picked_start != st.session_state["global_start"] or
+        picked_end   != st.session_state["global_end"]
+    )
+    dates_valid = picked_start < picked_end
 
-    # Presets rápidos
+    if dates_valid and dates_changed:
+        _apply_dates(picked_start, picked_end)   # limpia caché + rerun
+
+    # ── Presets rápidos ───────────────────────────────────────────────────────
     st.markdown(
         '<div style="font-size:0.65rem; color:#3B4460; margin:8px 0 6px;">Presets rápidos</div>',
         unsafe_allow_html=True,
     )
     p1, p2, p3 = st.columns(3)
     if p1.button("1A", use_container_width=True, key="preset_1y"):
-        st.session_state["global_start"] = date.today() - timedelta(days=365)
-        st.session_state["global_end"]   = date.today()
-        st.cache_data.clear()
-        st.rerun()
+        _apply_dates(date.today() - timedelta(days=365), date.today())
     if p2.button("3A", use_container_width=True, key="preset_3y"):
-        st.session_state["global_start"] = date.today() - timedelta(days=365 * 3)
-        st.session_state["global_end"]   = date.today()
-        st.cache_data.clear()
-        st.rerun()
+        _apply_dates(date.today() - timedelta(days=365 * 3), date.today())
     if p3.button("5A", use_container_width=True, key="preset_5y"):
-        st.session_state["global_start"] = date.today() - timedelta(days=365 * 5)
-        st.session_state["global_end"]   = date.today()
-        st.cache_data.clear()
-        st.rerun()
+        _apply_dates(date.today() - timedelta(days=365 * 5), date.today())
 
-    if picked_start >= picked_end:
+    # ── Feedback visual ───────────────────────────────────────────────────────
+    if not dates_valid:
         st.error("La fecha inicio debe ser anterior a la fecha fin.")
     else:
         delta_days = (st.session_state["global_end"] - st.session_state["global_start"]).days

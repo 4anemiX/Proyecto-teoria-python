@@ -14,7 +14,9 @@ def render():
     weights = [1 / n] * n
 
     with st.spinner("Calculando frontera eficiente..."):
-        data = fetch_frontera(TICKERS, weights)
+        start_str = str(st.session_state["global_start"])
+        end_str   = str(st.session_state["global_end"])
+        data = fetch_frontera(TICKERS, weights, start=start_str, end=end_str)
     if not data:
         st.warning("No se pudo calcular la frontera eficiente.")
         return

@@ -41,10 +41,12 @@ def render():
     """, unsafe_allow_html=True)
 
     # ── Leer fechas globales desde session_state ──────────────────────────────
+    # Se leen UNA SOLA VEZ al inicio de render() y se pasan explícitamente
+    # a todas las funciones de datos. Nunca se deja que client.py las lea
+    # internamente, porque eso rompe el cache key de @st.cache_data.
     fecha_inicio = st.session_state.get("global_start")
     fecha_fin    = st.session_state.get("global_end")
 
-    # Guardia: si por algún motivo no están inicializadas aún
     if fecha_inicio is None or fecha_fin is None:
         st.warning("Configura el período de análisis en el panel lateral.")
         return
@@ -59,6 +61,7 @@ def render():
         )
         return
 
+    # Convertir a string una sola vez — se usan en todas las llamadas al backend
     start_str = str(fecha_inicio)
     end_str   = str(fecha_fin)
 
@@ -74,6 +77,7 @@ def render():
     )
 
     # ── Tarjetas de precios ───────────────────────────────────────────────────
+    # fetch_activos devuelve el precio y variación del día actual (no filtra por fechas)
     activos = fetch_activos()
     if not activos:
         st.warning("No se pudo conectar con el backend.")
@@ -134,6 +138,7 @@ def render():
     all_data = {}
 
     for ticker in TICKERS + [BENCHMARK]:
+        # ✅ start_str y end_str siempre explícitos → cache key correcta
         data = fetch_precios(ticker, start=start_str, end=end_str)
         if data and len(data["close"]) > 1:
             closes     = pd.Series(data["close"], index=data["fechas"])
@@ -180,6 +185,7 @@ def render():
 
     prices = {}
     for ticker in TICKERS:
+        # ✅ fechas explícitas
         data = fetch_precios(ticker, start=start_str, end=end_str)
         if data:
             prices[ticker] = data["close"]
