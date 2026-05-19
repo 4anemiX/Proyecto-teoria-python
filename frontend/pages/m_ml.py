@@ -55,27 +55,26 @@ def _gauge_confianza(confidence: float, regime: str):
 
 # ── Probabilidades por régimen (barras horizontales) ──────────────────────────
 
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def _bars_probabilidades(probs: dict, regime: str):
-    # Ordenar: predicho primero
-    orden = sorted(probs.keys(), key=lambda k: -probs[k])
-    labels = orden
+    orden  = sorted(probs.keys(), key=lambda k: -probs[k])
     values = [probs[k] * 100 for k in orden]
-    colors = [
-        _REGIME_COLOR.get(k, COLORS["muted"]) if k == regime
-        else f"rgba({','.join(str(int(c[1:3], 16)) + ',' + str(int(c[3:5], 16)) + ',' + str(int(c[5:7], 16)) for c in [_REGIME_COLOR.get(k, '#3B4460')])[0]},0.35)"
-        for k in orden
-    ]
-    # Simpler color logic
+
     bar_colors = []
     for k in orden:
         base = _REGIME_COLOR.get(k, COLORS["muted"])
-        bar_colors.append(base if k == regime else COLORS["surface2"] if hasattr(COLORS, "surface2") else "#111420")
+        bar_colors.append(base if k == regime else _hex_to_rgba(base, 0.25))
 
     fig = go.Figure(go.Bar(
-        x=values, y=[k.upper() for k in labels],
+        x=values, y=[k.upper() for k in orden],
         orientation="h",
         marker_color=bar_colors,
-        marker_opacity=[1.0 if k == regime else 0.45 for k in orden],
+        marker_line_width=0,
         text=[f"{v:.1f}%" for v in values],
         textposition="outside",
         textfont=dict(size=12, family="DM Mono, monospace", color=COLORS["text"]),
@@ -83,7 +82,7 @@ def _bars_probabilidades(probs: dict, regime: str):
     ))
     fig.update_layout(
         height=180,
-        xaxis=dict(range=[0, 115], showgrid=False, showticklabels=False, zeroline=False),
+        xaxis=dict(range=[0, 120], showgrid=False, showticklabels=False, zeroline=False),
         yaxis=dict(tickfont=dict(size=13, family="DM Mono, monospace", color=COLORS["text"])),
         margin=dict(t=10, b=10, l=10, r=60),
         paper_bgcolor=COLORS["surface"],
