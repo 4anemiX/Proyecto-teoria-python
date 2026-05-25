@@ -50,8 +50,6 @@ def _interp_box(texto: str, color: str = "#3B82F6", icon: str = "💡") -> None:
 # ── Interpretaciones automáticas ───────────────────────────────────────────────
 
 def _interpretar_resumen(results: list) -> None:
-    """Interpretación global de todos los escenarios."""
-    # Filtrar escenario base si existe
     stress_results = [r for r in results if r.get("scenario", "") != "Base (sin estrés)"]
     base = next((r for r in results if r.get("scenario", "") == "Base (sin estrés)"), None)
 
@@ -61,26 +59,25 @@ def _interpretar_resumen(results: list) -> None:
     if not rets:
         return
 
-    peor_ret  = min(rets)
-    peor_name = names[rets.index(peor_ret)]
-    mejor_ret = max(rets)
+    peor_ret   = min(rets)
+    peor_name  = names[rets.index(peor_ret)]
+    mejor_ret  = max(rets)
     mejor_name = names[rets.index(mejor_ret)]
-    n_severos = sum(1 for v in rets if v < -10)
-    n_totales = len(rets)
+    n_severos  = sum(1 for v in rets if v < -10)
+    n_totales  = len(rets)
 
-    # Severidad general
     if peor_ret < -25:
-        severidad = "alta vulnerabilidad"
-        sev_color = "#F43F5E"
-        sev_icon  = "🔴"
+        severidad  = "alta vulnerabilidad"
+        sev_color  = "#F43F5E"
+        sev_icon   = "🔴"
     elif peor_ret < -10:
-        severidad = "vulnerabilidad moderada"
-        sev_color = COLORS["warning"]
-        sev_icon  = "🟡"
+        severidad  = "vulnerabilidad moderada"
+        sev_color  = COLORS["warning"]
+        sev_icon   = "🟡"
     else:
-        severidad = "resiliencia aceptable"
-        sev_color = COLORS["positive"]
-        sev_icon  = "🟢"
+        severidad  = "resiliencia aceptable"
+        sev_color  = COLORS["positive"]
+        sev_icon   = "🟢"
 
     texto = (
         f"El portafolio muestra <strong style='color:{sev_color}'>{severidad}</strong> ante shocks extremos. "
@@ -106,12 +103,10 @@ def _interpretar_resumen(results: list) -> None:
 
 
 def _interpretar_heatmap(results: list, tickers_sel: list) -> None:
-    """Interpretación del mapa de calor: activos más y menos vulnerables."""
     stress_results = [r for r in results if r.get("scenario", "") != "Base (sin estrés)"]
     if not stress_results:
         return
 
-    # Promedio de retorno por ticker a través de todos los escenarios
     avg_by_ticker: dict[str, list] = {t: [] for t in tickers_sel}
     for r in stress_results:
         for a in r.get("assets", []):
@@ -123,8 +118,12 @@ def _interpretar_heatmap(results: list, tickers_sel: list) -> None:
     if not avgs:
         return
 
-    mas_vulnerable  = min(avgs, key=avgs.get)
+    mas_vulnerable   = min(avgs, key=avgs.get)
     menos_vulnerable = max(avgs, key=avgs.get)
+
+    # Detectar si hay activo con pérdida extrema consistente
+    activos_criticos = [t for t, v in avgs.items() if v < -15]
+    activos_defensivos = [t for t, v in avgs.items() if v > -5]
 
     texto = (
         f"<strong style='color:{ticker_color(mas_vulnerable)}'>{mas_vulnerable}</strong> "
@@ -133,13 +132,25 @@ def _interpretar_heatmap(results: list, tickers_sel: list) -> None:
         f"En contraste, <strong style='color:{ticker_color(menos_vulnerable)}'>{menos_vulnerable}</strong> "
         f"muestra mayor resiliencia ({avgs[menos_vulnerable]:.2f}% en promedio), "
         f"comportándose como activo defensivo o de baja correlación con el mercado. "
-        f"Una cartera con mayor peso en activos defensivos reduciría la pérdida máxima en crisis."
     )
+
+    if activos_criticos:
+        texto += (
+            f"Los activos <strong>{', '.join(activos_criticos)}</strong> presentan pérdidas promedio "
+            f"superiores al 15% en los escenarios — considerar reducir su peso en carteras con "
+            f"baja tolerancia al riesgo. "
+        )
+
+    if activos_defensivos:
+        texto += (
+            f"<strong>{', '.join(activos_defensivos)}</strong> actúan como amortiguadores: "
+            f"incrementar su peso mejoraría la resiliencia global del portafolio ante crisis."
+        )
+
     _interp_box(texto, COLORS["accent"], "🌡️")
 
 
 def _interpretar_escenario(r: dict, base: dict = None) -> None:
-    """Interpretación detallada de un escenario individual."""
     assets    = r.get("assets", [])
     port_ret  = r.get("portfolio_return_pct", 0)
     var_95    = r.get("var_95_stressed_pct", 0)
@@ -154,23 +165,14 @@ def _interpretar_escenario(r: dict, base: dict = None) -> None:
     worst_a = min(assets, key=lambda a: a["return_pct"])
     best_a  = max(assets, key=lambda a: a["return_pct"])
 
-    # Construir texto basado en los parámetros reales del escenario
     partes = []
-
-    # Contexto del shock
     if rate_bp != 0:
         dir_tasa = "sube" if rate_bp > 0 else "baja"
-        partes.append(
-            f"la tasa de interés {dir_tasa} {abs(rate_bp)} puntos básicos"
-        )
+        partes.append(f"la tasa de interés {dir_tasa} {abs(rate_bp)} puntos básicos")
     if mkt_drop != 0:
-        partes.append(
-            f"el mercado cae {abs(mkt_drop*100):.0f}%"
-        )
+        partes.append(f"el mercado cae {abs(mkt_drop*100):.0f}%")
     if vol_mult > 1:
-        partes.append(
-            f"la volatilidad se multiplica por {vol_mult:.1f}x"
-        )
+        partes.append(f"la volatilidad se multiplica por {vol_mult:.1f}x")
 
     contexto = " y ".join(partes) if partes else "se aplican condiciones de estrés"
 
@@ -184,7 +186,6 @@ def _interpretar_escenario(r: dict, base: dict = None) -> None:
         f"es el más resiliente ({best_a['return_pct']:.2f}%). "
     )
 
-    # Comparación con base si existe
     if base:
         base_ret = base.get("portfolio_return_pct", 0)
         impacto_adicional = port_ret - base_ret
@@ -193,7 +194,7 @@ def _interpretar_escenario(r: dict, base: dict = None) -> None:
             f"este shock añade <strong>{impacto_adicional:.2f} pp</strong> de pérdida adicional. "
         )
 
-    # VaR estresado
+    # Interpretación del VaR estresado con contexto práctico
     c_warn = COLORS["warning"]
     texto += (
         f"El VaR al 95% bajo estrés es <strong style='color:{c_warn}'>{var_95:.2f}%</strong>, "
@@ -201,7 +202,16 @@ def _interpretar_escenario(r: dict, base: dict = None) -> None:
         f"el portafolio podría perder más de ese porcentaje."
     )
 
-    # Señal de alerta si es muy severo
+    # Interpretación adicional según la dispersión entre activos
+    rets_activos = [a["return_pct"] for a in assets]
+    dispersion = max(rets_activos) - min(rets_activos)
+    if dispersion > 20:
+        texto += (
+            f" La dispersión entre el activo más y menos afectado es de "
+            f"<strong>{dispersion:.1f} pp</strong> — los pesos del portafolio tienen "
+            f"alto impacto en el resultado final bajo este escenario."
+        )
+
     if port_ret < -20:
         color_box = "#F43F5E"
         icon = "⚠️"
@@ -213,6 +223,46 @@ def _interpretar_escenario(r: dict, base: dict = None) -> None:
         icon = "💡"
 
     _interp_box(texto, color_box, icon)
+
+
+# ── Interpretación de la tabla comparativa ────────────────────────────────────
+
+def _interpretar_tabla_comparativa(results: list) -> None:
+    """Lectura rápida de patrones en la tabla resumen de escenarios."""
+    stress = [r for r in results if r.get("scenario", "") != "Base (sin estrés)"]
+    if len(stress) < 2:
+        return
+
+    rets  = [r.get("portfolio_return_pct", 0) for r in stress]
+    vars_ = [r.get("var_95_stressed_pct", 0) for r in stress]
+
+    # Correlación aproximada entre tamaño del shock y pérdida
+    rate_shocks = [abs(r.get("rate_shock_bp", 0)) for r in stress]
+    mkt_drops   = [abs(r.get("market_drop_pct", 0)) for r in stress]
+
+    driver = "las caídas de mercado" if sum(mkt_drops) > sum(rate_shocks) / 100 else "los shocks de tasa"
+    rango_var = max(vars_) - min(vars_)
+
+    texto = (
+        f"Comparando los {len(stress)} escenarios, el principal driver de pérdidas parece ser "
+        f"<strong>{driver}</strong>. "
+        f"El VaR estresado oscila entre <strong>{min(vars_):.2f}%</strong> y "
+        f"<strong>{max(vars_):.2f}%</strong> según el escenario "
+        f"(rango de {rango_var:.2f} pp) — "
+    )
+
+    if rango_var > 10:
+        texto += (
+            "una variación alta que indica que la elección del escenario de estrés "
+            "importa significativamente para la gestión del riesgo."
+        )
+    else:
+        texto += (
+            "una variación contenida que sugiere que el portafolio responde de forma "
+            "relativamente uniforme a distintos tipos de shocks."
+        )
+
+    _interp_box(texto, "#6366F1", "📊")
 
 
 # ── Sección: configurar portafolio ─────────────────────────────────────────────
@@ -305,7 +355,6 @@ def _render_bars(results: list):
     rets  = [r.get("portfolio_return_pct", 0) for r in results]
     vars_ = [r.get("var_95_stressed_pct",  0) for r in results]
 
-    # Base en gris, resto con color por severidad
     bar_colors = [
         "#3B4460" if r.get("scenario", "") == "Base (sin estrés)"
         else _sev_color(v)
@@ -398,6 +447,46 @@ def _render_asset_table(assets: list):
     st.dataframe(styled, use_container_width=True, hide_index=True)
 
 
+# ── Interpretación de beta por activo ─────────────────────────────────────────
+
+def _interpretar_betas(assets: list) -> None:
+    """Explica por qué ciertos activos se ven más afectados según su beta."""
+    if not assets:
+        return
+
+    high_beta = [a for a in assets if a.get("beta", 0) > 1.3]
+    low_beta  = [a for a in assets if a.get("beta", 0) < 0.7]
+
+    if not high_beta and not low_beta:
+        return
+
+    partes = []
+    if high_beta:
+        nombres = ", ".join(
+            f"<strong style='color:{ticker_color(a['ticker'])}'>{a['ticker']}</strong> "
+            f"(β={a['beta']:.2f})"
+            for a in high_beta
+        )
+        partes.append(
+            f"{nombres} {'tiene' if len(high_beta)==1 else 'tienen'} beta alto — "
+            f"{'amplifica' if len(high_beta)==1 else 'amplифican'} los movimientos del mercado, "
+            f"por eso {'aparece' if len(high_beta)==1 else 'aparecen'} entre los más afectados"
+        )
+    if low_beta:
+        nombres = ", ".join(
+            f"<strong style='color:{ticker_color(a['ticker'])}'>{a['ticker']}</strong> "
+            f"(β={a['beta']:.2f})"
+            for a in low_beta
+        )
+        partes.append(
+            f"{nombres} {'tiene' if len(low_beta)==1 else 'tienen'} beta bajo — "
+            f"menor sensibilidad al mercado, actúa como ancla defensiva en el portafolio"
+        )
+
+    if partes:
+        _interp_box(" · ".join(partes) + ".", "#8B5CF6", "β")
+
+
 # ── Detalle de un escenario ────────────────────────────────────────────────────
 
 def _render_detail(r: dict, tickers_sel: list, base: dict = None):
@@ -411,8 +500,11 @@ def _render_detail(r: dict, tickers_sel: list, base: dict = None):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Interpretación automática del escenario
     _interpretar_escenario(r, base)
+
+    # Interpretación de betas: explica por qué cada activo reacciona como lo hace
+    if assets:
+        _interpretar_betas(assets)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -516,7 +608,6 @@ def render():
     results     = st.session_state["stress_results"]
     tickers_sel = st.session_state["stress_tickers"]
 
-    # Escenario base para referencia en comparaciones
     base = next((r for r in results if r.get("scenario", "") == "Base (sin estrés)"), None)
 
     # 5. Resumen + interpretación global
@@ -560,6 +651,9 @@ def render():
                 "Más afectado":       worst_a.get("ticker", "—"),
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+        # Interpretación de patrones en la tabla
+        _interpretar_tabla_comparativa(results)
 
     with tab_heat:
         st.markdown(

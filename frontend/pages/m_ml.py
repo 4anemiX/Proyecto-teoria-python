@@ -53,7 +53,7 @@ def _gauge_confianza(confidence: float, regime: str):
     return fig
 
 
-# ── Probabilidades por régimen (barras horizontales) ──────────────────────────
+# ── Probabilidades por régimen ─────────────────────────────────────────────────
 
 def _hex_to_rgba(hex_color: str, alpha: float) -> str:
     h = hex_color.lstrip("#")
@@ -94,17 +94,60 @@ def _bars_probabilidades(probs: dict, regime: str):
     return fig
 
 
+# ── Interpretación de probabilidades ─────────────────────────────────────────
+
+def _interpretar_probabilidades(probs: dict, regime: str) -> None:
+    """Explica qué tan decisiva fue la clasificación según la distribución de probabilidades."""
+    if not probs:
+        return
+
+    prob_ganadora = probs.get(regime, 0) * 100
+    otras = {k: v * 100 for k, v in probs.items() if k != regime}
+    segunda = max(otras, key=otras.get) if otras else None
+    prob_segunda = otras.get(segunda, 0) if segunda else 0
+    margen = prob_ganadora - prob_segunda
+
+    color = _REGIME_COLOR.get(regime, COLORS["muted"])
+
+    if margen > 40:
+        certeza = "muy clara"
+        certeza_txt = "El modelo está altamente seguro de esta clasificación."
+    elif margen > 20:
+        certeza = "moderada"
+        certeza_txt = (
+            f"Hay señales mixtas: el régimen <em>{segunda}</em> también tiene presencia "
+            f"({prob_segunda:.1f}%), aunque no suficiente para cambiar la clasificación."
+        )
+    else:
+        certeza = "baja"
+        certeza_txt = (
+            f"La diferencia con el régimen <em>{segunda}</em> es solo de {margen:.1f} pp — "
+            "el mercado está en una zona de transición y la predicción debe tomarse con cautela."
+        )
+
+    texto = (
+        f"La clasificación como <strong style='color:{color}'>{regime.upper()}</strong> "
+        f"tiene una ventaja de <strong>{margen:.1f} pp</strong> sobre la segunda opción — "
+        f"certeza <strong>{certeza}</strong>. {certeza_txt}"
+    )
+
+    icon = "✅" if margen > 40 else ("⚠️" if margen < 20 else "💡")
+    c = color if margen > 40 else (COLORS["warning"] if margen < 20 else COLORS["accent"])
+    st.markdown(
+        f'<div style="padding:10px 16px;background:#0D1018;border:1px solid #1C2030;'
+        f'border-left:3px solid {c};border-radius:0 8px 8px 0;'
+        f'font-size:0.8rem;color:#A0AABE;line-height:1.6;margin-top:8px;">'
+        f'<span style="margin-right:6px;">{icon}</span>{texto}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 # ── Features normalizadas ──────────────────────────────────────────────────────
 
 def _bars_features(features: dict):
-    """
-    Normaliza cada feature a z-score aproximado para que sean comparables.
-    Muestra valores absolutos con color según positivo/negativo.
-    """
     if not features:
         return None
 
-    # Separar en grupos con contexto financiero
     FEATURE_LABELS = {
         "ret_1d":   "Retorno 1d (%)",
         "ret_5d":   "Retorno 5d (%)",
@@ -114,8 +157,6 @@ def _bars_features(features: dict):
         "macd":     "MACD",
         "bb_pct":   "Bollinger %B",
     }
-
-    # Normalizar cada feature a su rango típico para que sean comparables visualmente
     NORM_RANGES = {
         "ret_1d":  (-5, 5),
         "ret_5d":  (-10, 10),
@@ -133,7 +174,6 @@ def _bars_features(features: dict):
         rng = NORM_RANGES.get(key, (-1, 1))
         lo, hi = rng
         span = hi - lo if hi != lo else 1
-        # Normalizar a [-1, 1]
         norm = 2 * ((float(val) - lo) / span) - 1
         norm = max(-1.0, min(1.0, norm))
 
@@ -180,7 +220,132 @@ def _bars_features(features: dict):
     return fig
 
 
-# ── Interpretación automática ──────────────────────────────────────────────────
+# ── Interpretación de features ────────────────────────────────────────────────
+
+def _interpretar_features(features: dict, regime: str) -> None:
+    """Explica cuáles features son consistentes con el régimen clasificado y cuáles no."""
+    if not features:
+        return
+
+    consistentes = []
+    contradictorias = []
+
+    rsi    = features.get("rsi_14")
+    ret_1d = features.get("ret_1d")
+    ret_5d = features.get("ret_5d")
+    ret_20 = features.get("ret_20d")
+    vol    = features.get("vol_20d")
+    macd   = features.get("macd")
+    bb_pct = features.get("bb_pct")
+
+    if regime == "alcista":
+        if ret_20 is not None and float(ret_20) > 0.03:
+            consistentes.append(f"retorno 20d positivo ({float(ret_20)*100:.1f}%)")
+        if rsi is not None and 50 < float(rsi) < 70:
+            consistentes.append(f"RSI en zona de momentum ({float(rsi):.1f})")
+        if macd is not None and float(macd) > 0:
+            consistentes.append(f"MACD positivo ({float(macd):.3f})")
+        if rsi is not None and float(rsi) > 75:
+            contradictorias.append(f"RSI en sobrecompra ({float(rsi):.1f}) — posible agotamiento")
+        if ret_20 is not None and float(ret_20) < 0:
+            contradictorias.append(f"retorno 20d negativo ({float(ret_20)*100:.1f}%) a pesar del régimen")
+
+    elif regime == "bajista":
+        if ret_20 is not None and float(ret_20) < -0.03:
+            consistentes.append(f"retorno 20d negativo ({float(ret_20)*100:.1f}%)")
+        if rsi is not None and float(rsi) < 45:
+            consistentes.append(f"RSI débil ({float(rsi):.1f})")
+        if vol is not None and float(vol) > 0.025:
+            consistentes.append(f"volatilidad elevada ({float(vol)*100:.2f}% diario)")
+        if rsi is not None and float(rsi) < 25:
+            contradictorias.append(f"RSI en sobreventa ({float(rsi):.1f}) — posible rebote técnico")
+
+    elif regime == "lateral":
+        if rsi is not None and 40 <= float(rsi) <= 60:
+            consistentes.append(f"RSI neutro ({float(rsi):.1f})")
+        if bb_pct is not None and 0.3 <= float(bb_pct) <= 0.7:
+            consistentes.append(f"precio dentro de las bandas de Bollinger (%B={float(bb_pct):.2f})")
+        if ret_20 is not None and abs(float(ret_20)) > 0.08:
+            contradictorias.append(
+                f"retorno 20d de {float(ret_20)*100:.1f}% — inusualmente alto para un mercado lateral"
+            )
+
+    if not consistentes and not contradictorias:
+        return
+
+    color_box = _REGIME_COLOR.get(regime, COLORS["accent"])
+    partes = []
+    if consistentes:
+        partes.append(
+            f"<strong>Señales consistentes con régimen {regime}:</strong> "
+            + ", ".join(consistentes)
+        )
+    if contradictorias:
+        warn_color = COLORS["warning"]
+        partes.append(
+            f"<strong style='color:{warn_color}'>Señales contradictorias:</strong> "
+            + ", ".join(contradictorias)
+        )
+
+    st.markdown(
+        f'<div style="padding:12px 16px;background:#0D1018;border:1px solid #1C2030;'
+        f'border-left:3px solid {color_box};border-radius:0 8px 8px 0;'
+        f'font-size:0.8rem;color:#A0AABE;line-height:1.7;margin-top:8px;">'
+        f'<span style="font-size:0.9rem;margin-right:6px;">🔎</span>'
+        + " &nbsp;·&nbsp; ".join(partes)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+# ── Interpretación del historial ──────────────────────────────────────────────
+
+def _interpretar_historial(history: list) -> None:
+    """Resume la tendencia reciente de predicciones del historial."""
+    if len(history) < 3:
+        return
+
+    regimes = [r.get("label", "") for r in history]
+    counts  = {r: regimes.count(r) for r in set(regimes)}
+    dominante = max(counts, key=counts.get)
+    pct_dom = counts[dominante] / len(regimes) * 100
+
+    # Detectar cambios recientes (últimas 3 predicciones)
+    recientes = regimes[:3]
+    cambios = len(set(recientes))
+
+    color = _REGIME_COLOR.get(dominante, COLORS["muted"])
+
+    texto = (
+        f"En las últimas <strong>{len(history)}</strong> predicciones, el régimen "
+        f"<strong style='color:{color}'>{dominante.upper()}</strong> ha dominado "
+        f"({pct_dom:.0f}% de los registros). "
+    )
+
+    if cambios == 1:
+        texto += "Las predicciones recientes son consistentes — el modelo no detecta transición de régimen."
+    elif cambios == 2:
+        texto += (
+            "Se detectan <strong>dos regímenes distintos</strong> en las últimas 3 predicciones — "
+            "posible zona de transición o incertidumbre en el mercado."
+        )
+    else:
+        texto += (
+            "<strong style='color:" + COLORS["warning"] + "'>Alta alternancia de regímenes</strong> "
+            "en las predicciones recientes — el modelo está oscilando, "
+            "lo que puede indicar un mercado en transición o señales contradictorias."
+        )
+
+    st.markdown(
+        f'<div style="margin-bottom:14px;padding:12px 16px;background:#0D1018;'
+        f'border:1px solid #1C2030;border-left:3px solid {color};border-radius:0 8px 8px 0;'
+        f'font-size:0.82rem;color:#A0AABE;line-height:1.6;">'
+        f'<span style="margin-right:6px;">🗂️</span>{texto}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ── Interpretación automática principal ───────────────────────────────────────
 
 def _interpretar(result: dict) -> None:
     regime     = result.get("regime", "")
@@ -191,7 +356,6 @@ def _interpretar(result: dict) -> None:
     color = _REGIME_COLOR.get(regime, COLORS["muted"])
     icon  = _REGIME_ICON.get(regime, "❓")
 
-    # Nivel de confianza
     if confidence >= 0.70:
         conf_txt = f"alta confianza ({confidence*100:.0f}%)"
     elif confidence >= 0.50:
@@ -207,7 +371,6 @@ def _interpretar(result: dict) -> None:
         f"<strong style='color:{color}'>{regime.upper()}</strong> con {conf_txt}. "
     )
 
-    # Contexto de accuracy
     if accuracy < 0.50:
         texto += (
             f"El accuracy histórico del modelo es {accuracy*100:.1f}%, apenas por encima del azar — "
@@ -218,10 +381,9 @@ def _interpretar(result: dict) -> None:
             f"El modelo tiene un accuracy histórico del {accuracy*100:.1f}% sobre datos de prueba. "
         )
 
-    # Señales de features si están disponibles
-    rsi = features.get("rsi_14")
+    rsi    = features.get("rsi_14")
     ret_20 = features.get("ret_20d")
-    vol = features.get("vol_20d")
+    vol    = features.get("vol_20d")
 
     señales = []
     if rsi is not None:
@@ -306,12 +468,12 @@ def render():
             unsafe_allow_html=True,
         )
 
-        # ── Interpretación ──
+        # ── Interpretación principal ──
         _interpretar(result)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ── Gráficos: gauge + probabilidades + features ──
+        # ── Gráficos: gauge + probabilidades ──
         col_g, col_p = st.columns([1, 1])
 
         with col_g:
@@ -332,12 +494,15 @@ def render():
             if probs:
                 st.plotly_chart(_bars_probabilidades(probs, regime),
                                 use_container_width=True, config={"displayModeBar": False})
+                # Interpretación de la distribución de probabilidades
+                _interpretar_probabilidades(probs, regime)
 
-        # ── Features normalizadas (ancho completo) ──
+        # ── Features normalizadas ──
         if features:
             st.markdown(
                 '<div style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;'
-                'text-transform:uppercase;color:#3B4460;margin:16px 0 4px;">Features del modelo — posición relativa en su rango histórico</div>',
+                'text-transform:uppercase;color:#3B4460;margin:16px 0 4px;">'
+                'Features del modelo — posición relativa en su rango histórico</div>',
                 unsafe_allow_html=True,
             )
             fig_f = _bars_features(features)
@@ -347,6 +512,8 @@ def render():
                 "Cada barra muestra dónde está el valor actual dentro del rango típico de esa feature. "
                 "Verde = extremo superior · Rojo = extremo inferior · El valor real aparece a la derecha."
             )
+            # Interpretación de qué features son consistentes con el régimen
+            _interpretar_features(features, regime)
 
     # ── Tab 2: Historial ───────────────────────────────────────────────────────
     with tab2:
@@ -368,7 +535,9 @@ def render():
             st.info("No hay predicciones guardadas aún. Ejecuta una predicción primero.")
             return
 
-        # Mini tabla visual
+        # Interpretación de la tendencia del historial
+        _interpretar_historial(history)
+
         for rec in history:
             regime = rec.get("label", "?")
             color  = _REGIME_COLOR.get(regime, COLORS["muted"])
@@ -378,8 +547,7 @@ def render():
             tick   = rec.get("ticker", "")
             ver    = rec.get("model_version", "")
 
-            # Barra de confianza inline
-            bar_w  = int(conf)
+            bar_w     = int(conf)
             bar_color = color
 
             st.markdown(
