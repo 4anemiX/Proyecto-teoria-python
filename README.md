@@ -1,15 +1,22 @@
 # DataRisk · USTA
+
 ### Tablero Interactivo de Análisis de Riesgo Financiero
 
-**Universidad Santo Tomás · Teoría del Riesgo · Prof. Javier Mauricio Sierra · 2026**
+**Universidad Santo Tomás · Teoría del Riesgo · Prof. Javier Mauricio Sierra**
 
-> Proyecto integrador que implementa un tablero de análisis de riesgo financiero con nueve módulos cuantitativos y un asistente de IA conversacional. Desplegado en Streamlit Community Cloud con acceso público.
-
-**Tablero en producción:** https://proyecto-teoria-python-aleja-xime.streamlit.app
+> Proyecto integrador que implementa un tablero de análisis de riesgo financiero con arquitectura backend/frontend separada. El backend FastAPI sirve como motor de cálculo y el frontend Streamlit consume los endpoints para visualizar los resultados.
 
 ---
 
-## Portafolio Analizado
+## Autores
+
+| Nombre | Programa |
+|--------|----------|
+| [Tu nombre aquí] | Estadística · USTA |
+
+---
+
+## Portafolio Analizado 📌
 
 **Narrativa: Economía Digital y Servicios Globales** — empresas que transforman la economía global mediante tecnología, datos y servicios financieros.
 
@@ -22,187 +29,187 @@
 | JPM | JPMorgan Chase | Finanzas Digitales |
 | SPY | S&P 500 ETF | Benchmark del mercado |
 
-**Horizonte por defecto:** 3 años de datos diarios · **Tasa libre de riesgo:** ^IRX (T-Bill 3M)
-
----
-
-## Módulos de Análisis
-
-| Módulo | Nombre | Contenido principal |
-|--------|--------|-------------------|
-| Overview | Vista General | Precios en tiempo real, rendimiento base 100, matriz de correlaciones |
-| M1 | Análisis Técnico | SMA, EMA, Bollinger, RSI, MACD, Estocástico |
-| M2 | Rendimientos | Estadísticas, pruebas de normalidad, histograma, Q-Q Plot, boxplot |
-| M3 | ARCH/GARCH | ARCH(1), GARCH(1,1), GJR-GARCH, EGARCH — pronóstico 5 días comparativo |
-| M4 | CAPM & Beta | Beta, alpha Jensen, R², Security Market Line |
-| M5 | VaR & CVaR | VaR paramétrico/histórico/Montecarlo, CVaR, test de Kupiec |
-| M6 | Markowitz | Frontera eficiente, mínima varianza, máximo Sharpe |
-| M7 | Señales & Alertas | Heatmap de señales, score técnico, gauge por activo |
-| M8 | Macro & Benchmark | VIX, tasas, divisas, Tracking Error, Information Ratio |
-| M9 | Asistente IA | Chat con LLaMA 3.1 (Groq), accesos rápidos, contexto por ticker |
+**Horizonte:** 3 años de datos diarios · **Tasa libre de riesgo:** ^IRX (T-Bill 3M)
 
 ---
 
 ## Stack Tecnológico
 
 | Componente | Tecnología | Versión |
-|-----------|-----------|---------|
+|------------|------------|---------|
+| Backend API | FastAPI | 0.136.0 |
+| Servidor ASGI | Uvicorn | 0.44.0 |
+| Validación | Pydantic + pydantic-settings | 2.13.1 |
 | Frontend | Streamlit | 1.43.2 |
 | Visualización | Plotly | 5.22.0 |
-| API (local) | FastAPI + Uvicorn | 0.136.0 / 0.44.0 |
-| Validación | Pydantic + pydantic-settings | 2.13.1 |
 | Datos de mercado | yfinance | 1.2.0 |
-| Análisis cuantitativo | scipy / numpy / pandas | 1.15.3 / 2.2.5 / 2.2.3 |
-| Modelos GARCH | arch | 7.0.0 |
+| Modelos ARCH/GARCH | arch | 7.0.0 |
 | Optimización | PyPortfolioOpt | 1.5.6 |
-| IA conversacional | Groq API (LLaMA 3.1) | llama-3.1-8b-instant |
-| HTTP cliente | httpx | 0.27.0 |
-| Runtime | Python | 3.12.9 |
+| Estadística | scipy + statsmodels | 1.13.1 / 0.14.2 |
+| IA Asistente | Groq API (llama-3.1-8b-instant) | — |
+| Base de datos | SQLAlchemy + SQLite | — |
+| Lenguaje | Python | 3.12.1 |
 
 ---
 
-## Estructura del Proyecto
+## Módulos del Frontend
 
-```
-DataRisk/
-├── backend/
-│   ├── app/
-│   │   ├── main.py          # Endpoints FastAPI (uso local)
-│   │   ├── services.py      # Motor de cálculo (DataService, RiskCalculator, etc.)
-│   │   ├── models.py        # Modelos Pydantic request/response
-│   │   ├── config.py        # Settings + fallback st.secrets
-│   │   └── dependencies.py  # Inyección de dependencias
-│   ├── requirements.txt
-│   └── .python-version      # Python 3.12.9
-├── frontend/
-│   ├── app.py               # Punto de entrada, sidebar, fechas globales
-│   ├── data/
-│   │   └── client.py        # Capa de datos (llama servicios directamente)
-│   ├── pages/
-│   │   ├── overview.py
-│   │   ├── m1_technical.py
-│   │   ├── m2_returns.py
-│   │   ├── m3_garch.py
-│   │   ├── m4_capm.py
-│   │   ├── m5_var.py
-│   │   ├── m6_markowitz.py
-│   │   ├── m7_signals.py
-│   │   ├── m8_macro.py
-│   │   └── m9_ia.py
-│   ├── utils/
-│   │   ├── styles.py        # CSS global
-│   │   └── theme.py         # Paleta de colores y template Plotly
-│   ├── requirements.txt
-│   └── .python-version      # Python 3.12.9
-└── requirements.txt         # Dependencias raíz
-```
+| Módulo | Descripción |
+|--------|-------------|
+| Vista General | Resumen del portafolio, precios actuales y variación diaria |
+| Análisis Técnico | SMA, EMA, Bollinger Bands, RSI, MACD, Oscilador Estocástico |
+| Rendimientos | Estadísticas de retornos diarios por activo |
+| ARCH/GARCH | Modelado de volatilidad condicional |
+| CAPM & Beta | Beta de mercado y rendimiento esperado por CAPM |
+| VaR & CVaR | Value at Risk paramétrico, histórico, Monte Carlo y CVaR |
+| Markowitz | Frontera eficiente y optimización de portafolio |
+| Señales & Alertas | Señales de compra/venta basadas en indicadores técnicos |
+| Macro & Benchmark | Indicadores macroeconómicos y comparación con SPY |
+| Asistente IA | Chat financiero con Groq (llama-3.1-8b-instant) |
+| Renta Fija | Curva de rendimiento Nelson-Siegel, duración, convexidad |
+| Opciones B-S | Valoración de opciones Black-Scholes y Greeks |
+| Stress Testing | Escenarios de estrés sobre el portafolio |
+| Predicción ML | Clasificación de régimen de mercado con Machine Learning |
+| Portafolios | Gestión CRUD de portafolios personalizados |
 
 ---
 
-## Ejecución Local
+## Endpoints del Backend
 
-### Requisitos
-- Python 3.12.x
-- Git
+### Datos de mercado
+
+| Endpoint | Método | Parámetros | Descripción |
+|----------|--------|------------|-------------|
+| `/` | GET | — | Health check |
+| `/activos` | GET | — | Lista activos con precios actuales |
+| `/precios/{ticker}` | GET | `start`, `end` (query, opcionales) | Precios históricos OHLCV |
+| `/rendimientos/{ticker}` | GET | `start`, `end` (query, opcionales) | Retornos y estadísticas |
+| `/indicadores/{ticker}` | GET | `start`, `end` (query, opcionales) | Indicadores técnicos |
+
+### Análisis de riesgo
+
+| Endpoint | Método | Parámetros | Descripción |
+|----------|--------|------------|-------------|
+| `/capm` | GET | `start`, `end` (query, opcionales) | Beta y rendimiento esperado CAPM |
+| `/garch/{ticker}` | GET | `start`, `end` (query, opcionales) | Modelo ARCH/GARCH de volatilidad |
+| `/var` | POST | `VaRRequest` body | VaR paramétrico, histórico, MC y CVaR |
+| `/alertas` | GET | `start`, `end` (query, opcionales) | Señales de compra/venta |
+| `/macro` | GET | — | Indicadores macroeconómicos |
+
+### Portafolio
+
+| Endpoint | Método | Parámetros | Descripción |
+|----------|--------|------------|-------------|
+| `/frontera-eficiente` | POST | `PortfolioRequest` body | Frontera eficiente de Markowitz |
+| `/portafolios` | GET | — | Listar portafolios guardados |
+| `/portafolios` | POST | `PortfolioCreate` body | Crear portafolio |
+| `/portafolios/{id}` | DELETE | `portfolio_id` path | Eliminar portafolio |
+
+### Renta Fija
+
+| Endpoint | Método | Parámetros | Descripción |
+|----------|--------|------------|-------------|
+| `/curva-rendimiento` | GET | — | Curva Nelson-Siegel con datos FRED (caché 24h) |
+| `/bono/duracion` | POST | `BondRequest` body | Duración Macaulay/Modificada y convexidad |
+
+### Opciones
+
+| Endpoint | Método | Parámetros | Descripción |
+|----------|--------|------------|-------------|
+| `/opcion/precio` | POST | `OptionRequest` body | Precio Black-Scholes, Greeks e IV implícita |
+| `/opcion/curvas` | POST | `OptionRequest` body | Curvas de payoff y delta |
+
+### Otros
+
+| Endpoint | Método | Parámetros | Descripción |
+|----------|--------|------------|-------------|
+| `/stress` | POST | `StressRequest` body | Stress testing por escenarios |
+| `/predict` | POST | `PredictRequest` body | Predicción de régimen de mercado (ML) |
+| `/predict/history` | GET | `ticker`, `limit` (query) | Historial de predicciones |
+| `/consulta-ia` | POST | `ConsultaIARequest` body | Asistente IA vía Groq |
+
+---
+
+## Instalación
 
 ### 1. Clonar el repositorio
+
 ```bash
-git clone https://github.com/4anemiX/Proyecto-teoria-python.git
+git clone https://github.com/4anemiX/Proyecto-teoria-python
 cd Proyecto-teoria-python
 ```
 
-### 2. Instalar dependencias del backend
+### 2. Crear entorno virtual
+
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# Linux / Mac
+source .venv/bin/activate
+```
+
+### 3. Instalar dependencias
+
+```bash
+pip install -r requirements.txt
+pip install -r backend/requirements.txt
+```
+
+### 4. Configurar variables de entorno
+
+```bash
+cp .env.example backend/.env
+# Editar backend/.env y agregar:
+# FRED_API_KEY=tu_clave_fred
+# GROQ_API_KEY=tu_clave_groq
+```
+
+---
+
+## Ejecución
+
+Abrir **dos terminales** desde la raíz del proyecto:
+
+### Terminal 1 — Backend FastAPI
+
 ```bash
 cd backend
-pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 3. Instalar dependencias del frontend
-```bash
-cd ../frontend
-pip install -r requirements.txt
-```
+El backend queda disponible en `http://localhost:8000`  
+Documentación interactiva: `http://localhost:8000/docs`
 
-### 4. Configurar variables de entorno (opcional)
-```bash
-# backend/.env
-cp backend/.env.example backend/.env
-# Editar si se desea cambiar períodos, TTL de caché, etc.
-```
+### Terminal 2 — Frontend Streamlit
 
-### 5. Iniciar el backend (Terminal 1)
-```bash
-cd backend
-uvicorn app.main:app --reload --port 8002
-```
-
-### 6. Iniciar el frontend (Terminal 2)
 ```bash
 cd frontend
 streamlit run app.py
 ```
 
-El tablero estará disponible en `http://localhost:8501`
-
----
-
-## Despliegue en Streamlit Cloud
-
-El proyecto se despliega automáticamente en cada `git push` a la rama `main`.
-
-### Configuración en Streamlit Cloud
-- **Repository:** `4anemiX/Proyecto-teoria-python`
-- **Branch:** `main`
-- **Main file path:** `frontend/app.py`
-- **Python version:** 3.12 (detectado desde `.python-version`)
-
-### Secrets requeridos
-En **Settings → Secrets** de la app en Streamlit Cloud:
-```toml
-GROQ_API_KEY = "tu_api_key_de_groq"
-```
-
-La API key de Groq se obtiene gratuitamente en https://console.groq.com
+El frontend se abre automáticamente en `http://localhost:8501`
 
 ---
 
 ## Variables de Entorno
 
-| Variable | Default | Descripción |
-|----------|---------|-------------|
-| `GROQ_API_KEY` | — | API key para el asistente IA (requerida) |
-| `DEFAULT_YEARS` | `3` | Horizonte de análisis por defecto en años |
-| `SMA_PERIOD` | `20` | Período de la media móvil simple |
-| `EMA_PERIOD` | `21` | Período de la media móvil exponencial |
-| `RSI_PERIOD` | `14` | Período del RSI |
-| `CACHE_TTL_SECONDS` | `1800` | Tiempo de vida del caché (30 min) |
-| `VAR_CONFIDENCE` | `0.95` | Nivel de confianza VaR por defecto |
-| `MC_SIMULATIONS` | `10000` | Simulaciones Montecarlo por defecto |
+| Variable | Descripción | Obligatoria |
+|----------|-------------|-------------|
+| `FRED_API_KEY` | Clave API de FRED (Federal Reserve Bank of St. Louis) | Sí (Renta Fija) |
+| `GROQ_API_KEY` | Clave API de Groq para el Asistente IA | Sí (Asistente IA) |
+
+Obtén tu clave FRED gratis en [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)  
+Obtén tu clave Groq gratis en [console.groq.com](https://console.groq.com)
 
 ---
-
-## Características Principales
-
-- **Selector de fechas global** en el sidebar con presets de 1, 3 y 5 años — afecta todos los módulos simultáneamente con invalidación automática de caché.
-- **Interpretaciones automáticas** en cada módulo: diagnóstico textual basado en los valores calculados (señales técnicas, normalidad, riesgo, consensus GARCH).
-- **Score técnico por activo** en M7: gauge de -5 a +5 que sintetiza los cinco indicadores técnicos.
-- **Pronóstico GARCH comparativo**: todos los modelos en el mismo gráfico con línea de referencia de volatilidad actual.
-- **Matriz de correlaciones en tonos morado/lila** para mejor legibilidad visual.
-- **Asistente IA pedagógico** con historial de conversación, accesos rápidos y contexto por ticker activo.
-- **Arquitectura directa**: en producción el frontend importa las clases del backend sin HTTP, eliminando la dependencia de un servidor externo.
-
----
-
-## Autores
-
-| Nombre | Programa |
-|--------|----------|
-| Alejandra Gordillo / Ximena Arias | Estadística · USTA |
-
-**Prof. Javier Mauricio Sierra · Universidad Santo Tomás · 2026**
 
 ## Uso de IA
 
 Este proyecto utilizó **Claude (Anthropic)** como asistente de desarrollo.
+
+---
 
 *DataRisk · Universidad Santo Tomás · Bogotá, Colombia · 2026*
